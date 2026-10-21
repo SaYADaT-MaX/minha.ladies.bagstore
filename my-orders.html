@@ -4,37 +4,215 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#e94f83">
+
   <title>My Orders | Minha Ladies Bag</title>
+
   <link rel="stylesheet" href="./style.css">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    .orders-page{max-width:900px;margin:auto;padding:35px 18px 60px}
-    .orders-heading{text-align:center;margin-bottom:25px}
-    .orders-card{background:#fff;border:1px solid #eadfd9;border-radius:12px;padding:20px;margin:18px 0;overflow-wrap:anywhere}
-    .orders-card h2{font-family:"Playfair Display",serif;color:#8b3155}
-    .orders-note{background:#fff5f8;padding:15px;border-radius:9px;line-height:1.7}
-    .order-meta{line-height:1.8}
-    .order-item{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eadfd9}
-    .orders-status{display:inline-block;background:#fff0d6;color:#855600;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:700}
-    .status-confirmed,.status-delivered{background:#e6f7eb;color:#206c36}
-    .status-cancelled{background:#ffe8e8;color:#a52222}
-    .orders-button{display:inline-block;padding:11px 18px;background:#e94f83;color:white;border:0;border-radius:7px;text-decoration:none;cursor:pointer;margin:10px 10px 0 0;font:inherit}
-    .orders-message{overflow-wrap:anywhere;white-space:pre-wrap}
-    .orders-total{font-size:19px;font-weight:700}
-    .hidden{display:none!important}
-    @media(max-width:650px){.orders-page{padding-top:25px}}
+    .orders-page {
+      max-width: 900px;
+      margin: auto;
+      padding: 35px 18px 60px;
+    }
+
+    .orders-heading {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .orders-card {
+      background: #fff;
+      border: 1px solid #eadfd9;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 18px 0;
+      overflow-wrap: anywhere;
+      box-shadow: 0 5px 18px rgba(48, 40, 33, 0.05);
+    }
+
+    .orders-card h2 {
+      font-family: "Playfair Display", serif;
+      color: #8b3155;
+      margin-top: 0;
+    }
+
+    .orders-card h3 {
+      margin: 22px 0 8px;
+    }
+
+    .orders-note {
+      background: #fff5f8;
+      padding: 15px;
+      border-radius: 9px;
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    .orders-note p {
+      margin: 5px 0 0;
+    }
+
+    .order-meta {
+      line-height: 1.8;
+      overflow-wrap: anywhere;
+    }
+
+    .order-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #eadfd9;
+    }
+
+    .order-item span {
+      overflow-wrap: anywhere;
+    }
+
+    .order-item strong {
+      white-space: nowrap;
+    }
+
+    .orders-status {
+      display: inline-block;
+      background: #fff0d6;
+      color: #855600;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 700;
+      margin: 5px 0 12px;
+    }
+
+    .status-confirmed,
+    .status-delivered {
+      background: #e6f7eb;
+      color: #206c36;
+    }
+
+    .status-shipped,
+    .status-out-for-delivery {
+      background: #e7f1ff;
+      color: #2056a0;
+    }
+
+    .status-cancelled {
+      background: #ffe8e8;
+      color: #a52222;
+    }
+
+    .orders-button {
+      display: inline-block;
+      padding: 11px 18px;
+      background: #e94f83;
+      color: white;
+      border: 0;
+      border-radius: 7px;
+      text-decoration: none;
+      cursor: pointer;
+      margin: 10px 10px 0 0;
+      font: inherit;
+    }
+
+    .orders-button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .orders-message {
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      line-height: 1.7;
+    }
+
+    .orders-total {
+      font-size: 19px;
+      font-weight: 700;
+      color: #8b3155;
+      border-top: 1px solid #eadfd9;
+      padding-top: 12px;
+    }
+
+    .delivery-box {
+      background: #fff5f8;
+      border: 1px solid #f3d8e2;
+      border-radius: 9px;
+      padding: 13px 15px;
+      margin-top: 18px;
+    }
+
+    .delivery-box h3 {
+      margin: 0 0 10px;
+      color: #8b3155;
+    }
+
+    .delivery-box p {
+      margin: 7px 0;
+      line-height: 1.7;
+    }
+
+    .delivery-label {
+      font-weight: 700;
+    }
+
+    .tracking-value {
+      font-weight: 700;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .tracking-pending {
+      color: #855600;
+      font-weight: 600;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 650px) {
+      .orders-page {
+        padding-top: 25px;
+      }
+
+      .orders-card {
+        padding: 16px;
+      }
+
+      .order-item {
+        font-size: 14px;
+      }
+    }
   </style>
 </head>
+
 <body>
   <div class="announcement">Discover your next favourite bag ✨</div>
 
   <header class="header">
     <a href="./index.html" class="brand-logo">
-      <img src="./IMG-20261021-WA0000.jpg" alt="MINHA Ladies Bag Logo" width="48" height="48">
-      <span class="brand-name">MINHA<small>LADIES BAG</small></span>
+      <img
+        src="./IMG-20261021-WA0000.jpg"
+        alt="MINHA Ladies Bag Logo"
+        width="48"
+        height="48"
+      >
+      <span class="brand-name">
+        MINHA
+        <small>LADIES BAG</small>
+      </span>
     </a>
-    <button class="menu-toggle" id="menuToggle" type="button" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+
+    <button
+      class="menu-toggle"
+      id="menuToggle"
+      type="button"
+      aria-label="Toggle navigation"
+      aria-expanded="false"
+    >☰</button>
+
     <nav class="nav" id="mainNav">
       <a href="./index.html">Home</a>
       <a href="./products.html">Shop</a>
@@ -43,7 +221,10 @@
       <a href="./faq.html">FAQs</a>
       <a href="./my-orders.html">My Orders</a>
     </nav>
-    <a href="./cart.html" class="cart-link">Bag <span class="cart-count" id="cartCount">0</span></a>
+
+    <a href="./cart.html" class="cart-link">
+      Bag <span class="cart-count" id="cartCount">0</span>
+    </a>
   </header>
 
   <main class="orders-page">
@@ -55,19 +236,38 @@
 
     <div class="orders-note">
       <strong>Your private order history</strong>
-      <p>Only orders connected to your current browser's Firebase account can be displayed here.</p>
+      <p>
+        Only orders connected to your current Firebase account can be
+        displayed here.
+      </p>
     </div>
 
-    <p id="ordersMessage" class="orders-message" role="status" aria-live="polite">Loading your orders...</p>
+    <p
+      id="ordersMessage"
+      class="orders-message"
+      role="status"
+      aria-live="polite"
+    >Loading your orders...</p>
+
     <div id="ordersList"></div>
 
-    <a class="orders-button" href="./products.html">Continue Shopping</a>
-    <button class="orders-button" id="refreshOrders" type="button">Refresh Orders</button>
+    <a class="orders-button" href="./products.html">
+      Continue Shopping
+    </a>
+
+    <button
+      class="orders-button"
+      id="refreshOrders"
+      type="button"
+    >Refresh Orders</button>
   </main>
 
   <footer class="footer">
     <div class="footer-bottom">
-      <p>© <span id="currentYear">2026</span> Minha Ladies Bag. All rights reserved.</p>
+      <p>
+        © <span id="currentYear">2026</span>
+        Minha Ladies Bag. All rights reserved.
+      </p>
     </div>
   </footer>
 
@@ -96,17 +296,32 @@
     let loading = false;
 
     function money(value) {
-      return "৳" + Number(value || 0).toLocaleString("en-BD");
+      const amount = Number(value);
+
+      return "৳" + (
+        Number.isFinite(amount) ? amount : 0
+      ).toLocaleString("en-BD");
     }
 
-    function safeText(value) {
-      return String(value ?? "");
+    function safeText(value, fallback = "") {
+      if (value === undefined || value === null || value === "") {
+        return fallback;
+      }
+
+      return String(value);
     }
 
-    function makeElement(tag, className, text) {
+    function makeElement(tag, className = "", text = undefined) {
       const element = document.createElement(tag);
-      if (className) element.className = className;
-      if (text !== undefined) element.textContent = text;
+
+      if (className) {
+        element.className = className;
+      }
+
+      if (text !== undefined) {
+        element.textContent = text;
+      }
+
       return element;
     }
 
@@ -114,63 +329,190 @@
       if (!value || typeof value.toDate !== "function") {
         return "Date not available";
       }
+
       return value.toDate().toLocaleString("en-BD");
+    }
+
+    function formatStatus(value) {
+      return safeText(value, "pending")
+        .trim()
+        .replace(/[_-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .toUpperCase();
+    }
+
+    function getStatusClass(value) {
+      const status = safeText(value, "pending")
+        .trim()
+        .toLowerCase()
+        .replace(/[_\s]+/g, "-");
+
+      if (status === "confirmed") {
+        return "orders-status status-confirmed";
+      }
+
+      if (status === "delivered") {
+        return "orders-status status-delivered";
+      }
+
+      if (status === "shipped") {
+        return "orders-status status-shipped";
+      }
+
+      if (status === "out-for-delivery") {
+        return "orders-status status-out-for-delivery";
+      }
+
+      if (status === "cancelled" || status === "canceled") {
+        return "orders-status status-cancelled";
+      }
+
+      return "orders-status";
+    }
+
+    function addMeta(card, label, value) {
+      const paragraph = makeElement("p", "order-meta");
+      const strong = makeElement("strong", "", label + ": ");
+
+      paragraph.append(
+        strong,
+        document.createTextNode(value)
+      );
+
+      card.appendChild(paragraph);
     }
 
     function renderOrder(order) {
       const card = makeElement("article", "orders-card");
-      const heading = makeElement("h2", "", "Order #" + order.id);
-      card.appendChild(heading);
 
-      const date = makeElement("p", "order-meta", "Order date: " + formatDate(order.createdAt));
-      card.appendChild(date);
+      // Order ID and date
+      card.appendChild(
+        makeElement("h2", "", "Order #" + order.id)
+      );
 
-      const status = safeText(order.status || "pending").toLowerCase();
-      const badgeClass = ["confirmed", "delivered"].includes(status)
-        ? "orders-status status-" + status
-        : status === "cancelled"
-          ? "orders-status status-cancelled"
-          : "orders-status";
+      card.appendChild(
+        makeElement(
+          "p",
+          "order-meta",
+          "Order date: " + formatDate(order.createdAt)
+        )
+      );
 
-      card.appendChild(makeElement("span", badgeClass, "Status: " + status.toUpperCase()));
+      // Order status
+      card.appendChild(
+        makeElement(
+          "span",
+          getStatusClass(order.status),
+          "Status: " + formatStatus(order.status)
+        )
+      );
 
+      // Products
       card.appendChild(makeElement("h3", "", "Items"));
 
-      (Array.isArray(order.items) ? order.items : []).forEach(item => {
+      const items = Array.isArray(order.items) ? order.items : [];
+
+      if (items.length === 0) {
+        card.appendChild(
+          makeElement("p", "order-meta", "No item details available.")
+        );
+      }
+
+      items.forEach(item => {
         const row = makeElement("div", "order-item");
+
         const name = makeElement(
           "span",
           "",
-          safeText(item.name || "Ladies Bag") + " × " + Number(item.quantity || 0)
+          safeText(item.name, "Ladies Bag") +
+            " × " +
+            Number(item.quantity || 0)
         );
-        const price = makeElement(
-          "strong",
-          "",
-          money(Number(item.price || 0) * Number(item.quantity || 0))
-        );
+
+        const itemTotal =
+          Number(item.price || 0) * Number(item.quantity || 0);
+
+        const price = makeElement("strong", "", money(itemTotal));
+
         row.append(name, price);
         card.appendChild(row);
       });
 
-      card.appendChild(makeElement("p", "order-meta", "Subtotal: " + money(order.total)));
-      card.appendChild(makeElement("p", "order-meta", "Delivery fee: " + money(order.deliveryFee)));
-      card.appendChild(makeElement(
-        "p",
-        "orders-total",
-        "Total: " + money(Number(order.total || 0) + Number(order.deliveryFee || 0))
-      ));
+      // Price calculation:
+      // order.total is treated as the product subtotal.
+      // deliveryFee is added separately.
+      const subtotal = Number(order.total || 0);
+      const deliveryFee = Number(order.deliveryFee || 0);
+      const grandTotal = subtotal + deliveryFee;
 
-      card.appendChild(makeElement(
-        "p",
-        "order-meta",
-        "Delivery details: " + safeText(order.address || "Not available")
-      ));
+      addMeta(card, "Subtotal", money(subtotal));
+      addMeta(card, "Delivery Fee", money(deliveryFee));
 
+      card.appendChild(
+        makeElement("p", "orders-total", "Total: " + money(grandTotal))
+      );
+
+      // Customer delivery address
+      addMeta(
+        card,
+        "Delivery Address",
+        safeText(order.address, "Not available")
+      );
+
+      // Courier and tracking information
+      const deliveryBox = makeElement("section", "delivery-box");
+
+      deliveryBox.appendChild(
+        makeElement("h3", "", "🚚 Courier & Tracking Details")
+      );
+
+      const courierName = safeText(order.courierName).trim();
+      const trackingNumber = safeText(order.trackingNumber).trim();
+
+      const courierParagraph = makeElement("p");
+      courierParagraph.append(
+        makeElement("span", "delivery-label", "Courier Name: "),
+        document.createTextNode(
+          courierName || "Not assigned yet"
+        )
+      );
+
+      if (!courierName) {
+        courierParagraph.classList.add("tracking-pending");
+      }
+
+      deliveryBox.appendChild(courierParagraph);
+
+      const trackingParagraph = makeElement("p");
+      trackingParagraph.append(
+        makeElement("span", "delivery-label", "Tracking Number: "),
+        makeElement(
+          trackingNumber ? "span" : "span",
+          trackingNumber ? "tracking-value" : "tracking-pending",
+          trackingNumber || "Not available yet"
+        )
+      );
+
+      deliveryBox.appendChild(trackingParagraph);
+
+      if (!courierName && !trackingNumber) {
+        deliveryBox.appendChild(
+          makeElement(
+            "p",
+            "order-meta",
+            "Your courier information will appear here after the shop updates your order."
+          )
+        );
+      }
+
+      card.appendChild(deliveryBox);
       list.appendChild(card);
     }
 
     async function loadOrders() {
-      if (!currentUid || loading) return;
+      if (!currentUid || loading) {
+        return;
+      }
 
       loading = true;
       refreshButton.disabled = true;
@@ -185,34 +527,41 @@
 
         const snapshot = await getDocs(ordersQuery);
 
-        const orders = snapshot.docs.map(item => ({
-          id: item.id,
-          ...item.data()
+        const orders = snapshot.docs.map(documentSnapshot => ({
+          id: documentSnapshot.id,
+          ...documentSnapshot.data()
         }));
 
         orders.sort((a, b) => {
           const dateA = a.createdAt?.toMillis?.() || 0;
           const dateB = b.createdAt?.toMillis?.() || 0;
+
           return dateB - dateA;
         });
 
         if (orders.length === 0) {
           message.textContent =
-            "No orders found for this browser account yet. Orders placed before secure account linking may not appear here.";
+            "No orders found for this browser account yet. " +
+            "Orders created under a different Firebase account may not appear here.";
+
           return;
         }
 
-        message.textContent = "You have " + orders.length +
+        message.textContent =
+          "You have " +
+          orders.length +
           (orders.length === 1 ? " order." : " orders.");
 
         orders.forEach(renderOrder);
 
       } catch (error) {
         console.error("Order history error:", error);
+
         message.textContent =
           "Could not load your orders. " +
           (error.message || "Please try again.") +
           (error.code ? " (" + error.code + ")" : "");
+
       } finally {
         loading = false;
         refreshButton.disabled = false;
@@ -224,9 +573,12 @@
     onAuthStateChanged(auth, async user => {
       try {
         if (!user) {
-          message.textContent = "Connecting your secure browser account...";
+          message.textContent =
+            "Connecting your secure browser account...";
+
           const result = await signInAnonymously(auth);
           currentUid = result.user.uid;
+
           await loadOrders();
           return;
         }
@@ -236,6 +588,7 @@
 
       } catch (error) {
         console.error("Authentication error:", error);
+
         message.textContent =
           "Could not connect to your account. " +
           (error.message || "Please reload the page.");

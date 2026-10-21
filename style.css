@@ -85,7 +85,7 @@ button {
 .header {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -147,7 +147,7 @@ button {
   letter-spacing: 2px;
 }
 
-/* Desktop navigation */
+/* Desktop Navigation */
 
 .nav {
   display: flex;
@@ -978,12 +978,20 @@ h2 {
   }
 
   .header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
     padding: 13px 5%;
     gap: 10px;
   }
 
   .brand-logo {
     gap: 7px;
+    min-width: 0;
   }
 
   .brand-logo img {
@@ -1003,35 +1011,73 @@ h2 {
 
   .menu-toggle {
     display: block;
+    flex-shrink: 0;
     margin-left: auto;
+    padding: 6px;
   }
 
+  /* Mobile menu: full screen width */
   .nav {
     position: absolute;
     top: 100%;
     right: 0;
     left: 0;
+    z-index: 1001;
+
     display: none;
     flex-direction: column;
     align-items: stretch;
     justify-content: flex-start;
+
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    max-height: calc(100vh - 100px);
+    max-height: calc(100dvh - 100px);
+
+    overflow-y: auto;
+    overscroll-behavior: contain;
+
     gap: 0;
-    padding: 10px 5% 16px;
-    border-bottom: 1px solid var(--border);
+    margin: 0;
+    padding: 8px 5% 16px;
+
+    box-sizing: border-box;
     background: var(--bg);
+    border-bottom: 1px solid var(--border);
     box-shadow: var(--shadow);
   }
 
+  /* Keep script.js compatible with .nav.open */
   .nav.open {
     display: flex;
   }
 
   .nav a {
     display: block;
+    flex: 0 0 auto;
     width: 100%;
-    padding: 12px 5px;
+    min-width: 0;
+    padding: 13px 8px;
+
+    box-sizing: border-box;
     border-bottom: 1px solid var(--border);
+
+    color: var(--muted);
     font-size: 13px;
+    line-height: 1.6;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .nav a:last-child {
+    border-bottom: 0;
+  }
+
+  .nav a:hover,
+  .nav a.active {
+    color: var(--accent);
   }
 
   .cart-link {
@@ -1224,13 +1270,30 @@ h2 {
 /* Small mobile */
 
 @media (max-width: 360px) {
-  .brand-name {
-    font-size: 11px;
+  .header {
+    gap: 7px;
+    padding-right: 4%;
+    padding-left: 4%;
   }
 
   .brand-logo img {
     width: 34px;
     height: 34px;
+  }
+
+  .brand-name {
+    font-size: 11px;
+    letter-spacing: 0.5px;
+  }
+
+  .brand-name small {
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+
+  .menu-toggle {
+    font-size: 23px;
+    padding: 6px;
   }
 
   .hero h1 {
@@ -1247,49 +1310,5 @@ h2 {
 
   .footer-main {
     grid-template-columns: 1fr;
-  }
-}
-/* FIX: Mobile Navigation Menu */
-@media (max-width: 768px) {
-  .header {
-    position: relative;
-    flex-wrap: wrap;
-  }
-
-  .menu-toggle {
-    display: block;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
-  .nav {
-    display: none;
-    flex-direction: column;
-    align-items: stretch;
-    justify-content: flex-start;
-    width: 100%;
-    max-width: 100%;
-    flex-basis: 100%;
-    gap: 0;
-    margin: 12px 0 0;
-    padding: 8px 0;
-    box-sizing: border-box;
-    background: #ffffff;
-    border-radius: 10px;
-    overflow: visible;
-  }
-
-  .nav.active {
-    display: flex;
-  }
-
-  .nav a {
-    display: block;
-    width: 100%;
-    box-sizing: border-box;
-    padding: 13px 18px;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    text-align: left;
   }
 }

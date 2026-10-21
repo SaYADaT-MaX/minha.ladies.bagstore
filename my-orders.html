@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#8b3155">
+  <title>My Orders | Minha Ladies Bag</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .orders-page {
+      max-width: 850px;
+      margin: 35px auto;
+      padding: 20px;
+    }
+
+    .orders-heading {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .orders-card {
+      background: #fff;
+      border: 1px solid #eadde3;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 18px;
+      overflow-wrap: anywhere;
+    }
+
+    .orders-card h2 {
+      color: #8b3155;
+      font-size: 19px;
+    }
+
+    .orders-status {
+      display: inline-block;
+      background: #fff0d6;
+      color: #855600;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .orders-note {
+      background: #fff4f7;
+      padding: 15px;
+      border-radius: 10px;
+      line-height: 1.7;
+    }
+
+    .orders-button {
+      display: inline-block;
+      padding: 11px 18px;
+      background: #8b3155;
+      color: white;
+      border: 0;
+      border-radius: 8px;
+      text-decoration: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="container">
+      <a href="index.html">Minha Ladies Bag</a>
+      <nav>
+        <a href="index.html">Home</a>
+        <a href="products.html">Products</a>
+        <a href="cart.html">My Bag</a>
+        <a href="my-orders.html">My Orders</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="orders-page">
+    <div class="orders-heading">
+      <h1>My Orders</h1>
+      <p>Check your order confirmation and delivery status.</p>
+    </div>
+
+    <div class="orders-note">
+      <strong>Your order history</strong>
+      <p>
+        Orders are saved in our online database. This page will display
+        your personal order history after secure order access is configured.
+      </p>
+    </div>
+
+    <section class="orders-card">
+      <h2>Order Tracking</h2>
+      <p id="ordersMessage" role="status">
+        Secure order tracking setup is required before orders can be displayed.
+      </p>
+      <a class="orders-button" href="products.html">Continue Shopping</a>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container">
+      <p>&copy; <span id="currentYear"></span> Minha Ladies Bag</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

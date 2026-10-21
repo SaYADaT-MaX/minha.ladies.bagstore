@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login | Minha Ladies Bag</title>
+  <meta name="robots" content="noindex, nofollow">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: #f8f1f4;
+      color: #30232a;
+    }
+    .card {
+      width: 100%;
+      max-width: 410px;
+      padding: 30px 24px;
+      background: white;
+      border-radius: 18px;
+      box-shadow: 0 10px 35px #4d203015;
+    }
+    h1 { text-align: center; font-size: 25px; margin: 0 0 8px; }
+    .subtitle { text-align: center; color: #766771; margin-bottom: 25px; }
+    label { display: block; margin: 16px 0 7px; font-weight: 600; }
+    input {
+      width: 100%;
+      padding: 13px;
+      border: 1px solid #d8cbd2;
+      border-radius: 9px;
+      font-size: 16px;
+    }
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px;
+      border: 0;
+      border-radius: 9px;
+      background: #8b315c;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .6; cursor: wait; }
+    #message { margin-top: 16px; text-align: center; font-size: 14px; }
+    .hidden { display: none; }
+    .notice { font-size: 13px; color: #766771; text-align: center; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Minha Ladies Bag</h1>
+    <p class="subtitle">Secure Admin Login</p>
+
+    <form id="loginForm">
+      <label for="email">Admin Email</label>
+      <input id="email" type="email" autocomplete="username"
+             placeholder="Enter admin email" required>
+
+      <label for="password">Password</label>
+      <input id="password" type="password"
+             autocomplete="current-password"
+             placeholder="Enter password" required>
+
+      <button id="loginButton" type="submit">Login to Admin</button>
+    </form>
+
+    <section id="dashboard" class="hidden">
+      <h2>Login successful!</h2>
+      <p>You are signed in as the authorized admin.</p>
+      <p class="notice">Product and order management will be added next.</p>
+      <button id="logoutButton" type="button">Logout</button>
+    </section>
+
+    <p id="message" role="status" aria-live="polite"></p>
+  </main>
+
+  <script type="module" src="./admin.js"></script>
+</body>
+</html>

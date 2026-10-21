@@ -39,7 +39,6 @@ body {
 img {
   display: block;
   max-width: 100%;
-  width: 100%;
   object-fit: cover;
 }
 
@@ -90,18 +89,23 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  padding: 17px 6%;
-  background: rgba(250, 247, 242, 0.96);
+  gap: 18px;
+  padding: 17px 4%;
+  background: rgba(250, 247, 242, 0.97);
   border-bottom: 1px solid var(--border);
   backdrop-filter: blur(14px);
 }
 
-.logo {
+.logo,
+.brand-logo {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+  text-decoration: none;
+}
+
+.logo {
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 1.8px;
@@ -120,24 +124,47 @@ button {
   border-radius: 50%;
 }
 
-.logo small {
+.logo small,
+.brand-name small {
   display: block;
   margin-top: 4px;
-  font-size: 8px;
-  letter-spacing: 3px;
+  font-family: var(--body-font);
+  font-size: 9px;
+  letter-spacing: 2px;
   font-weight: 500;
 }
+
+.brand-logo img {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.brand-name {
+  font-family: var(--heading-font);
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+/* Desktop navigation */
 
 .nav {
   display: flex;
   align-items: center;
-  gap: 27px;
+  justify-content: center;
+  gap: clamp(10px, 1.5vw, 22px);
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .nav a {
+  display: inline-block;
+  flex-shrink: 0;
   color: var(--muted);
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
   transition: color 0.25s;
 }
 
@@ -150,6 +177,7 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
   font-size: 12px;
   font-weight: 700;
 }
@@ -346,6 +374,7 @@ h2 {
 
 .hero-image > img {
   position: relative;
+  width: 100%;
   height: 470px;
   border-radius: 2px;
 }
@@ -429,6 +458,7 @@ h2 {
 }
 
 .category-card img {
+  width: 100%;
   height: 340px;
   transition: transform 0.5s ease;
 }
@@ -479,6 +509,7 @@ h2 {
 }
 
 .product-image img {
+  width: 100%;
   height: 260px;
   transition: transform 0.4s ease;
 }
@@ -543,6 +574,58 @@ h2 {
   font-size: 13px;
 }
 
+/* Firebase featured products */
+
+#featuredProducts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.firebase-product-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: white;
+  overflow: hidden;
+}
+
+.firebase-product-card img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: 8px;
+  background: var(--cream);
+}
+
+.firebase-product-card h3 {
+  margin-top: 10px;
+  font-family: var(--heading-font);
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.firebase-product-card .product-price {
+  margin-top: 5px;
+  font-weight: 700;
+}
+
+.firebase-product-card .product-button {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #e94f83;
+  color: white;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.firebase-message {
+  grid-column: 1 / -1;
+}
+
 /* Story */
 
 .story-section {
@@ -554,6 +637,7 @@ h2 {
 }
 
 .story-image img {
+  width: 100%;
   height: 400px;
 }
 
@@ -608,7 +692,8 @@ h2 {
   padding-bottom: 40px;
 }
 
-.footer-brand .logo {
+.footer-brand .logo,
+.footer-brand .brand-logo {
   color: white;
 }
 
@@ -653,7 +738,7 @@ h2 {
   font-size: 10px;
 }
 
-/* General inner-page helpers */
+/* Inner pages */
 
 .page-heading {
   padding: 65px 7%;
@@ -748,6 +833,7 @@ h2 {
 }
 
 .cart-item img {
+  width: 100%;
   height: 90px;
 }
 
@@ -820,21 +906,34 @@ h2 {
   font-size: 12px;
 }
 
-/* Responsive tablet */
+/* Tablet */
 
 @media (max-width: 1000px) {
   .header {
-    padding-right: 4%;
-    padding-left: 4%;
-    gap: 14px;
+    padding-right: 3%;
+    padding-left: 3%;
+    gap: 12px;
+  }
+
+  .brand-logo img {
+    width: 42px;
+    height: 42px;
+  }
+
+  .brand-name {
+    letter-spacing: 1px;
+  }
+
+  .brand-name small {
+    letter-spacing: 1.5px;
   }
 
   .nav {
-    gap: 15px;
+    gap: 10px;
   }
 
   .nav a {
-    font-size: 11px;
+    font-size: 10px;
   }
 
   .hero {
@@ -869,9 +968,9 @@ h2 {
   }
 }
 
-/* Responsive mobile */
+/* Mobile */
 
-@media (max-width: 650px) {
+@media (max-width: 700px) {
   .announcement {
     padding: 7px 10px;
     font-size: 9px;
@@ -880,24 +979,26 @@ h2 {
 
   .header {
     padding: 13px 5%;
-    gap: 12px;
+    gap: 10px;
   }
 
-  .logo {
+  .brand-logo {
     gap: 7px;
-    font-size: 12px;
+  }
+
+  .brand-logo img {
+    width: 42px;
+    height: 42px;
+  }
+
+  .brand-name {
+    font-size: 13px;
     letter-spacing: 1px;
   }
 
-  .logo-mark {
-    width: 34px;
-    height: 34px;
-    font-size: 21px;
-  }
-
-  .logo small {
-    font-size: 7px;
-    letter-spacing: 2px;
+  .brand-name small {
+    font-size: 8px;
+    letter-spacing: 1.5px;
   }
 
   .menu-toggle {
@@ -913,6 +1014,7 @@ h2 {
     display: none;
     flex-direction: column;
     align-items: stretch;
+    justify-content: flex-start;
     gap: 0;
     padding: 10px 5% 16px;
     border-bottom: 1px solid var(--border);
@@ -925,6 +1027,8 @@ h2 {
   }
 
   .nav a {
+    display: block;
+    width: 100%;
     padding: 12px 5px;
     border-bottom: 1px solid var(--border);
     font-size: 13px;
@@ -1023,6 +1127,19 @@ h2 {
     gap: 22px 12px;
   }
 
+  #featuredProducts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .firebase-product-card {
+    padding: 8px;
+  }
+
+  .firebase-product-card h3 {
+    font-size: 15px;
+  }
+
   .product-image img {
     height: 210px;
   }
@@ -1107,13 +1224,13 @@ h2 {
 /* Small mobile */
 
 @media (max-width: 360px) {
-  .logo {
-    font-size: 10px;
+  .brand-name {
+    font-size: 11px;
   }
 
-  .logo-mark {
-    width: 29px;
-    height: 29px;
+  .brand-logo img {
+    width: 34px;
+    height: 34px;
   }
 
   .hero h1 {
@@ -1124,7 +1241,11 @@ h2 {
     height: 175px;
   }
 
+  #featuredProducts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .footer-main {
     grid-template-columns: 1fr;
   }
-  }
+}

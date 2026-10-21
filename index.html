@@ -18,6 +18,7 @@
       align-items: center;
       gap: 10px;
       text-decoration: none;
+      min-width: 0;
     }
 
     .brand-logo img {
@@ -25,6 +26,7 @@
       height: 58px;
       object-fit: contain;
       border-radius: 6px;
+      flex-shrink: 0;
     }
 
     .brand-name {
@@ -40,7 +42,7 @@
       letter-spacing: 3px;
     }
 
-    /* Navigation: My Orders included */
+    /* Desktop navigation */
     #mainNav {
       display: flex;
       align-items: center;
@@ -113,15 +115,71 @@
       }
     }
 
+    /* Mobile menu: #mainNav ID rules are explicitly overridden */
     @media (max-width: 700px) {
-      #featuredProducts {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
+      .header {
+        position: relative;
+        flex-wrap: wrap;
       }
 
       .brand-logo img {
         width: 46px;
         height: 46px;
+      }
+
+      .menu-toggle {
+        display: block;
+        margin-left: auto;
+        flex-shrink: 0;
+        cursor: pointer;
+        position: relative;
+        z-index: 1002;
+      }
+
+      #mainNav {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        flex-basis: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: 0;
+        margin: 0;
+        padding: 8px 0;
+        background: #faf7f2;
+        box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+        border-radius: 0 0 10px 10px;
+        max-height: calc(100vh - 100px);
+        max-height: calc(100dvh - 100px);
+        overflow-x: hidden;
+        overflow-y: auto;
+        z-index: 1001;
+      }
+
+      #mainNav.open {
+        display: flex;
+      }
+
+      #mainNav a {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 13px 18px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-align: left;
+        font-size: 15px;
+      }
+
+      #featuredProducts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
       }
 
       .firebase-product-card {
@@ -132,11 +190,31 @@
         font-size: 15px;
       }
     }
+
+    @media (max-width: 360px) {
+      .brand-logo {
+        gap: 6px;
+      }
+
+      .brand-name {
+        letter-spacing: 1px;
+        font-size: 14px;
+      }
+
+      .brand-name small {
+        font-size: 9px;
+        letter-spacing: 2px;
+      }
+
+      .brand-logo img {
+        width: 38px;
+        height: 38px;
+      }
+    }
   </style>
 </head>
 
 <body>
-
   <div class="announcement">
     Discover your next favourite bag ✨
   </div>
@@ -172,7 +250,6 @@
   </header>
 
   <main>
-
     <section class="hero">
       <div class="hero-content">
         <span class="eyebrow">STYLE THAT SPEAKS</span>
@@ -315,12 +392,10 @@
       <p>Explore our collection and find a bag you'll love carrying.</p>
       <a href="products.html" class="btn btn-light">Shop the Collection ↗</a>
     </section>
-
   </main>
 
   <footer class="footer">
     <div class="footer-main">
-
       <div class="footer-brand">
         <a href="index.html" class="brand-logo" aria-label="MINHA Home">
           <img src="IMG-20261021-WA0000.jpg" alt="MINHA Ladies Bag Logo">
@@ -352,7 +427,6 @@
         <p>Have a question? We'd love to hear from you.</p>
         <a href="contact.html" class="footer-contact">Get in Touch ↗</a>
       </div>
-
     </div>
 
     <div class="footer-bottom">
@@ -402,7 +476,6 @@
 
         snapshot.forEach((productDoc) => {
           const product = productDoc.data();
-
           const card = document.createElement("article");
           card.className = "firebase-product-card";
 
@@ -445,7 +518,6 @@
           card.append(image, name, price, stock, link);
           container.appendChild(card);
         });
-
       } catch (error) {
         console.error("Product loading error:", error);
         showMessage("Products could not load. Please refresh the page.");
@@ -454,6 +526,5 @@
 
     loadProducts();
   </script>
-
 </body>
 </html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Checkout | Minha Ladies Bag</title>
+  <link rel="stylesheet" href="style.css">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .checkout-page{max-width:850px;margin:auto;padding:35px 18px 60px}
+    .checkout-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+    .checkout-box{padding:22px;border:1px solid #eadfd9;border-radius:12px;background:#fff}
+    .checkout-box h2{font-family:"Playfair Display",serif}
+    .checkout-form label{display:block;margin:14px 0 6px;font-weight:600}
+    .checkout-form input,.checkout-form textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #e4d8d0;border-radius:7px;font:inherit}
+    .checkout-form textarea{min-height:95px;resize:vertical}
+    .checkout-button{width:100%;padding:13px;border:0;border-radius:7px;background:#e94f83;color:#fff;font:inherit;font-weight:700;margin-top:18px;cursor:pointer}
+    .checkout-button:disabled{opacity:.6;cursor:wait}
+    .order-line{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eadfd9}
+    .checkout-total{font-size:21px;font-weight:700}
+    #checkoutMessage{overflow-wrap:anywhere}
+    @media(max-width:650px){.checkout-layout{grid-template-columns:1fr}.checkout-page{padding-top:25px}}
+  </style>
+</head>
+<body>
+  <div class="announcement">Discover your next favourite bag ✨</div>
+
+  <header class="header">
+    <a href="index.html" class="brand-logo">
+      <img src="IMG-20261021-WA0000.jpg" alt="MINHA Ladies Bag Logo" width="48" height="48">
+      <span class="brand-name">MINHA<small>LADIES BAG</small></span>
+    </a>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+    <nav class="nav" id="mainNav">
+      <a href="index.html">Home</a>
+      <a href="products.html">Shop</a>
+      <a href="about.html">Our Story</a>
+      <a href="contact.html">Contact</a>
+      <a href="faq.html">FAQs</a>
+    </nav>
+    <a href="cart.html" class="cart-link">Bag <span class="cart-count" id="cartCount">0</span></a>
+  </header>
+
+  <main class="checkout-page">
+    <span class="eyebrow">ALMOST YOURS</span>
+    <h1>Checkout</h1>
+    <p>Enter your delivery details to place your order.</p>
+
+    <div class="checkout-layout">
+      <section class="checkout-box">
+        <h2>Delivery Details</h2>
+        <form class="checkout-form" id="checkoutForm">
+          <label for="customerName">Full Name</label>
+          <input id="customerName" name="customerName" autocomplete="name" required maxlength="100">
+
+          <label for="phone">Phone Number</label>
+          <input id="phone" name="phone" type="tel" autocomplete="tel" required maxlength="20" pattern="[0-9+() -]{7,20}" placeholder="01XXXXXXXXX">
+
+          <label for="address">Full Delivery Address</label>
+          <textarea id="address" name="address" autocomplete="street-address" required maxlength="500" placeholder="Village/Area, Upazila, District"></textarea>
+
+          <button class="checkout-button" id="placeOrderButton" type="submit">Place Order</button>
+          <p id="checkoutMessage" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="checkout-box">
+        <h2>Your Order</h2>
+        <div id="orderItems">Loading cart...</div>
+        <div class="order-line"><span>Subtotal</span><strong id="subtotal">৳0</strong></div>
+        <div class="order-line"><span>Delivery Fee</span><span>To be confirmed</span></div>
+        <p class="checkout-total" id="grandTotal">Total: ৳0 + delivery</p>
+        <p>Delivery charges will be confirmed by the shop.</p>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-bottom">
+      <p>© <span id="currentYear">2026</span> Minha Ladies Bag. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script type="module">
+    import { db } from "./firebase-config.js";
+    import {
+      collection, doc, getDoc, addDoc, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const CART_KEY = "minhaLadiesBagCart";
+    const form = document.getElementById("checkoutForm");
+    const itemsElement = document.getElementById("orderItems");
+    const subtotalElement = document.getElementById("subtotal");
+    const grandTotalElement = document.getElementById("grandTotal");
+    const messageElement = document.getElementById("checkoutMessage");
+    const submitButton = document.getElementById("placeOrderButton");
+    const cartCount = document.getElementById("cartCount");
+
+    let currentSubtotal = 0;
+
+    function readCart() {
+      try {
+        const data = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+        return Array.isArray(data) ? data : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function money(value) {
+      return "৳" + Number(value).toLocaleString("en-BD");
+    }
+
+    function showCart() {
+      const cart = readCart();
+      itemsElement.replaceChildren();
+      currentSubtotal = 0;
+
+      if (!cart.length) {
+        itemsElement.textContent = "Your shopping bag is empty.";
+        submitButton.disabled = true;
+      } else {
+        submitButton.disabled = false;
+
+        cart.forEach(item => {
+          const qty = Math.max(1, Math.floor(Number(item.quantity) || 1));
+          const price = Math.max(0, Number(item.price) || 0);
+          currentSubtotal += price * qty;
+
+          const line = document.createElement("div");
+          line.className = "order-line";
+
+          const label = document.createElement("span");
+          label.textContent = `${item.name || "Ladies Bag"} × ${qty}`;
+
+          const amount = document.createElement("strong");
+          amount.textContent = money(price * qty);
+
+          line.append(label, amount);
+          itemsElement.appendChild(line);
+        });
+      }
+
+      subtotalElement.textContent = money(currentSubtotal);
+      grandTotalElement.textContent = "Total: " + money(currentSubtotal) + " + delivery";
+      cartCount.textContent = String(cart.reduce(
+        (sum, item) => sum + Math.max(0, Number(item.quantity) || 0), 0
+      ));
+    }
+
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      messageElement.textContent = "";
+
+      const cart = readCart();
+
+      if (!cart.length) {
+        messageElement.textContent = "Your cart is empty. Please choose a product first.";
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.textContent = "Placing Order...";
+
+      try {
+        const verifiedItems = [];
+        let verifiedSubtotal = 0;
+
+        for (const item of cart) {
+          if (!item.id) {
+            throw new Error("A cart item is missing its product ID. Please remove it and add it again.");
+          }
+
+          const quantity = Math.floor(Number(item.quantity));
+          if (!Number.isInteger(quantity) || quantity < 1) {
+            throw new Error("An item has an invalid quantity.");
+          }
+
+          const productSnap = await getDoc(doc(db, "products", item.id));
+
+          if (!productSnap.exists()) {
+            throw new Error("A product is no longer available. Please update your cart.");
+          }
+
+          const product = productSnap.data();
+          const stock = Math.floor(Number(product.stock) || 0);
+          const price = Number(product.price);
+
+          if (product.active !== true || quantity > stock) {
+            throw new Error(`${product.name || "A product"} is out of stock or has insufficient stock.`);
+          }
+
+          if (!Number.isFinite(price) || price < 0) {
+            throw new Error("A product has an invalid price. Please contact the shop.");
+          }
+
+          verifiedSubtotal += price * quantity;
+
+          verifiedItems.push({
+            productId: item.id,
+            name: String(product.name || "Ladies Bag"),
+            price,
+            quantity
+          });
+        }
+
+        const order = {
+          customerName: form.customerName.value.trim(),
+          phone: form.phone.value.trim(),
+          address: form.address.value.trim(),
+          items: verifiedItems,
+          total: verifiedSubtotal,
+          deliveryFee: 0,
+          status: "pending",
+          createdAt: serverTimestamp()
+        };
+
+        if (!order.customerName || !order.phone || !order.address) {
+          throw new Error("Please complete all delivery details.");
+        }
+
+        const result = await addDoc(collection(db, "orders"), order);
+
+        localStorage.removeItem(CART_KEY);
+        showCart();
+        form.reset();
+
+        messageElement.textContent =
+          "Order submitted successfully! Your order reference is " + result.id +
+          ". Delivery fee will be confirmed by the shop.";
+      } catch (error) {
+        console.error("Order submission error:", error);
+        messageElement.textContent =
+          error.message || "We couldn't submit your order. Please try again.";
+      } finally {
+        submitButton.textContent = "Place Order";
+        submitButton.disabled = readCart().length === 0;
+      }
+    });
+
+    showCart();
+  </script>
+</body>
+</html>

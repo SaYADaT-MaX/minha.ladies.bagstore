@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Your Shopping Bag | Minha Ladies Bag</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .cart-page{max-width:900px;margin:auto;padding:35px 18px 60px}
+    .cart-page h1{font-family:"Playfair Display",serif}
+    .cart-item{display:flex;gap:15px;align-items:center;padding:15px 0;border-bottom:1px solid #eadfd9}
+    .cart-item img{width:90px;height:105px;object-fit:cover;border-radius:8px;background:#f8f1eb}
+    .cart-item-info{flex:1;min-width:0}
+    .cart-item-info h2{font-size:17px;overflow-wrap:anywhere}
+    .quantity-controls{display:flex;align-items:center;gap:10px;margin:8px 0}
+    .quantity-controls button,.remove-btn{padding:7px 11px;border:1px solid #e4d8d0;border-radius:6px;background:#fff;cursor:pointer}
+    .remove-btn{color:#b42352}
+    .cart-summary{margin-top:25px;padding:20px;background:#f8f1eb;border-radius:12px}
+    .cart-total{font-size:22px;font-weight:700}
+    .cart-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:15px}
+    .cart-actions a{display:inline-block;padding:12px 18px;border-radius:7px;text-decoration:none}
+    .continue-btn{border:1px solid #d7c5ba;color:#3a2927}
+    .checkout-btn{background:#e94f83;color:#fff}
+    .cart-message{padding:20px 0}
+    @media(max-width:500px){.cart-item img{width:72px;height:88px}.cart-item-info h2{font-size:15px}}
+  </style>
+</head>
+<body>
+  <div class="announcement">Discover your next favourite bag ✨</div>
+
+  <header class="header">
+    <a href="index.html" class="brand-logo">
+      <img src="IMG-20261021-WA0000.jpg" alt="MINHA Ladies Bag Logo" width="48" height="48">
+      <span class="brand-name">MINHA<small>LADIES BAG</small></span>
+    </a>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+    <nav class="nav" id="mainNav">
+      <a href="index.html">Home</a>
+      <a href="products.html">Shop</a>
+      <a href="about.html">Our Story</a>
+      <a href="contact.html">Contact</a>
+      <a href="faq.html">FAQs</a>
+    </nav>
+    <a href="cart.html" class="cart-link">Bag <span class="cart-count" id="cartCount">0</span></a>
+  </header>
+
+  <main class="cart-page">
+    <span class="eyebrow">YOUR SELECTION</span>
+    <h1>Your Shopping Bag</h1>
+    <div id="cartItems"><p class="cart-message">Loading your bag...</p></div>
+
+    <section class="cart-summary">
+      <p>Subtotal</p>
+      <p class="cart-total" id="cartTotal">৳0</p>
+      <p id="cartNote">Delivery fee will be confirmed at checkout.</p>
+      <div class="cart-actions">
+        <a class="continue-btn" href="products.html">Continue Shopping</a>
+        <a class="checkout-btn" href="checkout.html" id="checkoutLink">Proceed to Checkout →</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-bottom">
+      <p>© <span id="currentYear">2026</span> Minha Ladies Bag. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    const CART_KEY = "minhaLadiesBagCart";
+    const itemsContainer = document.getElementById("cartItems");
+    const totalElement = document.getElementById("cartTotal");
+    const countElement = document.getElementById("cartCount");
+    const checkoutLink = document.getElementById("checkoutLink");
+
+    function readCart() {
+      try {
+        const cart = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+        return Array.isArray(cart) ? cart : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function saveCart(cart) {
+      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+      renderCart();
+    }
+
+    function money(amount) {
+      return "৳" + Number(amount).toLocaleString("en-BD");
+    }
+
+    function renderCart() {
+      const cart = readCart();
+      itemsContainer.replaceChildren();
+
+      let total = 0;
+      let itemCount = 0;
+
+      if (cart.length === 0) {
+        const message = document.createElement("p");
+        message.className = "cart-message";
+        message.textContent = "Your shopping bag is empty.";
+        itemsContainer.appendChild(message);
+        checkoutLink.setAttribute("aria-disabled", "true");
+        checkoutLink.style.opacity = "0.55";
+      } else {
+        checkoutLink.removeAttribute("aria-disabled");
+        checkoutLink.style.opacity = "1";
+
+        cart.forEach((item, index) => {
+          const quantity = Math.max(1, Number(item.quantity) || 1);
+          const price = Math.max(0, Number(item.price) || 0);
+          total += price * quantity;
+          itemCount += quantity;
+
+          const row = document.createElement("article");
+          row.className = "cart-item";
+
+          const img = document.createElement("img");
+          img.alt = item.name || "Bag";
+          img.src = item.imageUrl || "";
+          img.addEventListener("error", () => img.removeAttribute("src"));
+
+          const info = document.createElement("div");
+          info.className = "cart-item-info";
+
+          const name = document.createElement("h2");
+          name.textContent = item.name || "Ladies Bag";
+
+          const priceText = document.createElement("p");
+          priceText.textContent = money(price) + " each";
+
+          const controls = document.createElement("div");
+          controls.className = "quantity-controls";
+
+          const minus = document.createElement("button");
+          minus.textContent = "−";
+          minus.setAttribute("aria-label", "Decrease quantity");
+          minus.disabled = quantity <= 1;
+          minus.addEventListener("click", () => {
+            const updated = readCart();
+            updated[index].quantity = Math.max(1, (Number(updated[index].quantity) || 1) - 1);
+            saveCart(updated);
+          });
+
+          const qty = document.createElement("span");
+          qty.textContent = String(quantity);
+
+          const plus = document.createElement("button");
+          plus.textContent = "+";
+          plus.setAttribute("aria-label", "Increase quantity");
+          plus.addEventListener("click", () => {
+            const updated = readCart();
+            updated[index].quantity = (Number(updated[index].quantity) || 1) + 1;
+            saveCart(updated);
+          });
+
+          controls.append(minus, qty, plus);
+
+          const lineTotal = document.createElement("p");
+          lineTotal.textContent = "Subtotal: " + money(price * quantity);
+
+          const remove = document.createElement("button");
+          remove.className = "remove-btn";
+          remove.textContent = "Remove";
+          remove.addEventListener("click", () => {
+            const updated = readCart();
+            updated.splice(index, 1);
+            saveCart(updated);
+          });
+
+          info.append(name, priceText, controls, lineTotal, remove);
+          row.append(img, info);
+          itemsContainer.appendChild(row);
+        });
+      }
+
+      totalElement.textContent = money(total);
+      countElement.textContent = String(itemCount);
+    }
+
+    checkoutLink.addEventListener("click", event => {
+      if (readCart().length === 0) {
+        event.preventDefault();
+        alert("Your shopping bag is empty. Please choose a product first.");
+      }
+    });
+
+    renderCart();
+  </script>
+</body>
+</html>

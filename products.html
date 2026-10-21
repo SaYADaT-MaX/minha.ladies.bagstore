@@ -70,22 +70,35 @@
       overflow-wrap: anywhere;
     }
     .shop-button {
-      display: inline-block;
-      padding: 10px 14px;
+      display: block;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 11px 14px;
+      border: 0;
       border-radius: 7px;
       background: #e94f83;
       color: white;
-      text-decoration: none;
-      margin-top: 8px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .shop-button:disabled {
+      background: #b9aaa9;
+      cursor: not-allowed;
     }
     .shop-message {
       grid-column: 1/-1;
       padding: 25px 0;
     }
     @media(max-width:650px) {
-      #shopProducts { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+      #shopProducts {
+        grid-template-columns: repeat(2,minmax(0,1fr));
+        gap: 12px;
+      }
       .shop-card { padding: 8px; }
       .shop-card h2 { font-size: 15px; }
+      .shop-button { padding: 10px 6px; font-size: 13px; }
     }
   </style>
 </head>
@@ -139,6 +152,7 @@
   </footer>
 
   <script src="script.js"></script>
+
   <script type="module">
     import { db } from "./firebase-config.js";
     import {
@@ -148,19 +162,109 @@
     const grid = document.getElementById("shopProducts");
     const count = document.getElementById("productCount");
     const filter = document.getElementById("categoryFilter");
+    const cartCount = document.getElementById("cartCount");
+    const CART_KEY = "minhaLadiesBagCart";
+
     let products = [];
+
+    function readCart() {
+      try {
+        const cart = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+        return Array.isArray(cart) ? cart : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function updateCartCount() {
+      const cart = readCart();
+      const total = cart.reduce(
+        (sum, item) => sum + Math.max(0, Number(item.quantity) || 0),
+        0
+      );
+      cartCount.textContent = String(total);
+    }
+
+    function normalizeCategory(value) {
+      const category = String(value || "").toLowerCase().trim();
+
+      if (category.includes("shoulder")) return "shoulder";
+      if (category.includes("mini")) return "mini";
+      if (category.includes("handbag") || category === "handbags") {
+        return "handbags";
+      }
+
+      return category;
+    }
+
+    function addToCart(product, button) {
+      const stock = Math.max(0, Math.floor(Number(product.stock) || 0));
+      const price = Number(product.price);
+
+      if (stock < 1) {
+        alert("Sorry, this bag is out of stock.");
+        return;
+      }
+
+      if (!Number.isFinite(price) || price < 0) {
+        alert("The price for this product is unavailable.");
+        return;
+      }
+
+      const cart = readCart();
+      const existing = cart.find(item => item.id === product.id);
+
+      if (existing) {
+        const currentQty = Math.max(1, Number(existing.quantity) || 1);
+
+        if (currentQty >= stock) {
+          alert("You've reached the available stock limit.");
+          return;
+        }
+
+        existing.quantity = currentQty + 1;
+        existing.stock = stock;
+        existing.price = price;
+        existing.name = product.name || "Ladies Bag";
+        existing.imageUrl = product.imageUrl || "";
+      } else {
+        cart.push({
+          id: product.id,
+          name: product.name || "Ladies Bag",
+          price: price,
+          imageUrl: product.imageUrl || "",
+          quantity: 1,
+          stock: stock
+        });
+      }
+
+      try {
+        localStorage.setItem(CART_KEY, JSON.stringify(cart));
+      } catch (error) {
+        alert("Could not save your cart. Please check your phone storage.");
+        return;
+      }
+
+      updateCartCount();
+
+      const originalText = button.textContent;
+      button.textContent = "Added ✓";
+      alert("Bag added to your shopping bag!");
+
+      button.textContent = originalText;
+    }
 
     function renderProducts() {
       const selected = filter.value;
+
       const shown = products.filter(product => {
         if (selected === "all") return true;
-        const category = String(product.category || "").toLowerCase();
-        return category === selected ||
-          (selected === "handbags" && category === "handbag");
+        return normalizeCategory(product.category) === selected;
       });
 
       grid.replaceChildren();
-      count.textContent = `${shown.length} product${shown.length === 1 ? "" : "s"}`;
+      count.textContent =
+        `${shown.length} product${shown.length === 1 ? "" : "s"}`;
 
       if (!shown.length) {
         const p = document.createElement("p");
@@ -177,7 +281,11 @@
         const img = document.createElement("img");
         img.alt = product.name || "MINHA handbag";
         img.loading = "lazy";
-        if (product.imageUrl) img.src = product.imageUrl;
+
+        if (product.imageUrl) {
+          img.src = product.imageUrl;
+        }
+
         img.addEventListener("error", () => {
           img.removeAttribute("src");
           img.alt = "Product image unavailable";
@@ -189,22 +297,35 @@
         const price = document.createElement("p");
         price.className = "shop-price";
         const amount = Number(product.price);
-        price.textContent = Number.isFinite(amount)
+
+        price.textContent = Number.isFinite(amount) && amount >= 0
           ? "৳" + amount.toLocaleString("en-BD")
           : "Price unavailable";
 
         const stock = document.createElement("p");
         stock.className = "shop-stock";
-        const quantity = Number(product.stock || 0);
+        const quantity = Math.max(0, Math.floor(Number(product.stock) || 0));
         stock.textContent = quantity > 0 ? "In Stock" : "Out of Stock";
 
         const description = document.createElement("p");
         description.className = "shop-description";
         description.textContent = product.description || "";
 
-        card.append(img, name, price, stock, description);
+        const addButton = document.createElement("button");
+        addButton.type = "button";
+        addButton.className = "shop-button";
+        addButton.textContent = quantity > 0 ? "Add to Bag" : "Out of Stock";
+        addButton.disabled = quantity < 1;
+
+        addButton.addEventListener("click", () => {
+          addToCart(product, addButton);
+        });
+
+        card.append(img, name, price, stock, description, addButton);
         grid.appendChild(card);
       });
+
+      updateCartCount();
     }
 
     async function loadProducts() {
@@ -213,32 +334,46 @@
           collection(db, "products"),
           where("active", "==", true)
         );
+
         const snapshot = await getDocs(q);
+
         products = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
+
         renderProducts();
       } catch (error) {
         console.error("Shop loading error:", error);
         count.textContent = "Unable to load products";
         grid.replaceChildren();
+
         const p = document.createElement("p");
         p.className = "shop-message";
-        p.textContent = "Products could not load. Please refresh or try again later.";
+        p.textContent =
+          "Products could not load. Please refresh or try again later.";
+
         grid.appendChild(p);
       }
     }
 
     filter.addEventListener("change", renderProducts);
 
+    window.addEventListener("storage", event => {
+      if (event.key === CART_KEY) updateCartCount();
+    });
+
     const params = new URLSearchParams(location.search);
     const requestedCategory = params.get("category");
-    if (requestedCategory &&
-        [...filter.options].some(option => option.value === requestedCategory)) {
+
+    if (
+      requestedCategory &&
+      [...filter.options].some(option => option.value === requestedCategory)
+    ) {
       filter.value = requestedCategory;
     }
 
+    updateCartCount();
     loadProducts();
   </script>
 </body>

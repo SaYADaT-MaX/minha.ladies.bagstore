@@ -40,12 +40,19 @@
       letter-spacing: 3px;
     }
 
-    /* Navigation links */
-    .nav a {
-      text-decoration: none;
+    /* Navigation: My Orders included */
+    #mainNav {
+      display: flex;
+      align-items: center;
+      gap: 20px;
     }
 
-    .nav a.active {
+    #mainNav a {
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    #mainNav a.active {
       font-weight: 700;
     }
 
@@ -92,12 +99,18 @@
       text-decoration: none;
     }
 
-    .firebase-product-card .product-button:hover {
-      opacity: 0.88;
-    }
-
     .firebase-message {
       grid-column: 1 / -1;
+    }
+
+    @media (max-width: 900px) {
+      #mainNav {
+        gap: 12px;
+      }
+
+      #mainNav a {
+        font-size: 14px;
+      }
     }
 
     @media (max-width: 700px) {
@@ -109,15 +122,6 @@
       .brand-logo img {
         width: 46px;
         height: 46px;
-      }
-
-      .brand-name {
-        letter-spacing: 1px;
-      }
-
-      .brand-name small {
-        font-size: 9px;
-        letter-spacing: 2px;
       }
 
       .firebase-product-card {
@@ -169,7 +173,6 @@
 
   <main>
 
-    <!-- Hero section -->
     <section class="hero">
       <div class="hero-content">
         <span class="eyebrow">STYLE THAT SPEAKS</span>
@@ -201,7 +204,6 @@
       </div>
     </section>
 
-    <!-- Benefits -->
     <section class="benefits">
       <div class="benefit">
         <span class="benefit-icon">✧</span>
@@ -228,7 +230,6 @@
       </div>
     </section>
 
-    <!-- Categories -->
     <section class="section categories-section">
       <div class="section-heading">
         <div>
@@ -274,7 +275,6 @@
       </div>
     </section>
 
-    <!-- Featured products -->
     <section class="section featured-section">
       <div class="section-heading">
         <div>
@@ -290,7 +290,6 @@
       </div>
     </section>
 
-    <!-- Our story -->
     <section class="story-section">
       <div class="story-image">
         <img
@@ -310,7 +309,6 @@
       </div>
     </section>
 
-    <!-- Call to action -->
     <section class="cta-section">
       <span class="eyebrow">YOUR NEXT FAVOURITE IS HERE</span>
       <h2>A Little Style Goes a Long Way.</h2>
@@ -320,7 +318,6 @@
 
   </main>
 
-  <!-- Footer -->
   <footer class="footer">
     <div class="footer-main">
 
@@ -431,7 +428,6 @@
           price.className = "product-price";
 
           const amount = Number(product.price);
-
           price.textContent = Number.isFinite(amount)
             ? "৳" + amount.toLocaleString("en-BD")
             : "Price unavailable";

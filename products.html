@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f1eb">
+  <title>Shop Bags | Minha Ladies Bag</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    .shop-heading {
+      padding: 45px 20px;
+      text-align: center;
+      background: #f8f1eb;
+    }
+    .shop-heading h1 {
+      font-family: "Playfair Display", serif;
+      margin: 10px 0;
+    }
+    .shop-content {
+      max-width: 1150px;
+      margin: auto;
+      padding: 30px 18px 55px;
+    }
+    .shop-tools {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 22px;
+    }
+    .shop-tools select {
+      padding: 11px;
+      border: 1px solid #e4d8d0;
+      border-radius: 8px;
+      background: white;
+      max-width: 100%;
+    }
+    #shopProducts {
+      display: grid;
+      grid-template-columns: repeat(3,minmax(0,1fr));
+      gap: 20px;
+    }
+    .shop-card {
+      border: 1px solid #eadfd9;
+      padding: 12px;
+      border-radius: 12px;
+      background: white;
+      min-width: 0;
+    }
+    .shop-card img {
+      width: 100%;
+      aspect-ratio: 4/5;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #f8f1eb;
+    }
+    .shop-card h2 {
+      font: 600 18px "Playfair Display",serif;
+      overflow-wrap: anywhere;
+      margin: 12px 0 6px;
+    }
+    .shop-price { font-weight: 700; }
+    .shop-stock { font-size: 13px; }
+    .shop-description {
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+    .shop-button {
+      display: inline-block;
+      padding: 10px 14px;
+      border-radius: 7px;
+      background: #e94f83;
+      color: white;
+      text-decoration: none;
+      margin-top: 8px;
+    }
+    .shop-message {
+      grid-column: 1/-1;
+      padding: 25px 0;
+    }
+    @media(max-width:650px) {
+      #shopProducts { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+      .shop-card { padding: 8px; }
+      .shop-card h2 { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="announcement">Discover your next favourite bag ✨</div>
+
+  <header class="header">
+    <a href="index.html" class="brand-logo" aria-label="MINHA Home">
+      <img src="IMG-20261021-WA0000.jpg" alt="MINHA Ladies Bag Logo" width="55" height="55">
+      <span class="brand-name">MINHA<small>LADIES BAG</small></span>
+    </a>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+    <nav class="nav" id="mainNav">
+      <a href="index.html">Home</a>
+      <a href="products.html" class="active">Shop</a>
+      <a href="about.html">Our Story</a>
+      <a href="contact.html">Contact</a>
+      <a href="faq.html">FAQs</a>
+    </nav>
+    <a href="cart.html" class="cart-link">Bag <span class="cart-count" id="cartCount">0</span></a>
+  </header>
+
+  <main>
+    <section class="shop-heading">
+      <span class="eyebrow">THE MINHA COLLECTION</span>
+      <h1>Find Your Favourite Bag</h1>
+      <p>Explore styles for your everyday moments.</p>
+    </section>
+
+    <section class="shop-content">
+      <div class="shop-tools">
+        <span id="productCount">Loading products...</span>
+        <select id="categoryFilter" aria-label="Filter by category">
+          <option value="all">All categories</option>
+          <option value="handbags">Handbags</option>
+          <option value="shoulder">Shoulder Bags</option>
+          <option value="mini">Mini Bags</option>
+        </select>
+      </div>
+      <div id="shopProducts">
+        <p class="shop-message">Loading beautiful bags...</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-bottom">
+      <p>© <span id="currentYear">2026</span> Minha Ladies Bag. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script type="module">
+    import { db } from "./firebase-config.js";
+    import {
+      collection, getDocs, query, where
+    } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const grid = document.getElementById("shopProducts");
+    const count = document.getElementById("productCount");
+    const filter = document.getElementById("categoryFilter");
+    let products = [];
+
+    function renderProducts() {
+      const selected = filter.value;
+      const shown = products.filter(product => {
+        if (selected === "all") return true;
+        const category = String(product.category || "").toLowerCase();
+        return category === selected ||
+          (selected === "handbags" && category === "handbag");
+      });
+
+      grid.replaceChildren();
+      count.textContent = `${shown.length} product${shown.length === 1 ? "" : "s"}`;
+
+      if (!shown.length) {
+        const p = document.createElement("p");
+        p.className = "shop-message";
+        p.textContent = "No products found in this category yet.";
+        grid.appendChild(p);
+        return;
+      }
+
+      shown.forEach(product => {
+        const card = document.createElement("article");
+        card.className = "shop-card";
+
+        const img = document.createElement("img");
+        img.alt = product.name || "MINHA handbag";
+        img.loading = "lazy";
+        if (product.imageUrl) img.src = product.imageUrl;
+        img.addEventListener("error", () => {
+          img.removeAttribute("src");
+          img.alt = "Product image unavailable";
+        });
+
+        const name = document.createElement("h2");
+        name.textContent = product.name || "Beautiful Bag";
+
+        const price = document.createElement("p");
+        price.className = "shop-price";
+        const amount = Number(product.price);
+        price.textContent = Number.isFinite(amount)
+          ? "৳" + amount.toLocaleString("en-BD")
+          : "Price unavailable";
+
+        const stock = document.createElement("p");
+        stock.className = "shop-stock";
+        const quantity = Number(product.stock || 0);
+        stock.textContent = quantity > 0 ? "In Stock" : "Out of Stock";
+
+        const description = document.createElement("p");
+        description.className = "shop-description";
+        description.textContent = product.description || "";
+
+        card.append(img, name, price, stock, description);
+        grid.appendChild(card);
+      });
+    }
+
+    async function loadProducts() {
+      try {
+        const q = query(
+          collection(db, "products"),
+          where("active", "==", true)
+        );
+        const snapshot = await getDocs(q);
+        products = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        renderProducts();
+      } catch (error) {
+        console.error("Shop loading error:", error);
+        count.textContent = "Unable to load products";
+        grid.replaceChildren();
+        const p = document.createElement("p");
+        p.className = "shop-message";
+        p.textContent = "Products could not load. Please refresh or try again later.";
+        grid.appendChild(p);
+      }
+    }
+
+    filter.addEventListener("change", renderProducts);
+
+    const params = new URLSearchParams(location.search);
+    const requestedCategory = params.get("category");
+    if (requestedCategory &&
+        [...filter.options].some(option => option.value === requestedCategory)) {
+      filter.value = requestedCategory;
+    }
+
+    loadProducts();
+  </script>
+</body>
+</html>

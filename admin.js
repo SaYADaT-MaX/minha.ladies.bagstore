@@ -67,8 +67,7 @@ function showDashboard() {
 
       <form id="productForm">
         <label>Product Name *</label>
-        <input id="pName" required maxlength="120"
-          placeholder="Ladies Handbag">
+        <input id="pName" required maxlength="120">
 
         <label>Price (৳) *</label>
         <input id="pPrice" type="number" min="0" step="1" required>
@@ -77,15 +76,13 @@ function showDashboard() {
         <input id="pStock" type="number" min="0" step="1" required>
 
         <label>Image URL *</label>
-        <input id="pImage" type="url" required
-          placeholder="https://example.com/bag.jpg">
+        <input id="pImage" type="url" required placeholder="https://example.com/bag.jpg">
 
         <label>Category</label>
         <input id="pCategory" placeholder="Handbags">
 
         <label>Description</label>
-        <textarea id="pDescription" rows="3"
-          placeholder="Product details"></textarea>
+        <textarea id="pDescription" rows="3"></textarea>
 
         <label>
           <input id="pActive" type="checkbox" checked>
@@ -104,6 +101,7 @@ function showDashboard() {
 
       <hr>
       <h3>Customer Orders</h3>
+      <p>Edit an order's delivery fee and courier details, then save the changes.</p>
       <button id="refreshOrders" type="button">Refresh Orders</button>
       <div id="ordersList">Loading orders...</div>
     </div>
@@ -158,21 +156,42 @@ function showDashboard() {
   });
 
   document.getElementById("ordersList").addEventListener("click", async event => {
-    const button = event.target.closest("button[data-order-id]");
+    const button = event.target.closest("button[data-save-order]");
     if (!button) return;
 
-    const id = button.dataset.orderId;
-    const select = document.getElementById("status-" + id);
-    if (!select) return;
+    const id = button.dataset.saveOrder;
+    const feeInput = document.getElementById("fee-" + id);
+    const courierInput = document.getElementById("courier-" + id);
+    const trackingInput = document.getElementById("tracking-" + id);
+    const statusInput = document.getElementById("status-" + id);
+
+    const deliveryFee = Number(feeInput.value);
+    const courierName = courierInput.value.trim();
+    const trackingNumber = trackingInput.value.trim();
+    const status = statusInput.value;
+
+    if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
+      showMessage("Delivery fee must be zero or a positive number.");
+      return;
+    }
+
+    button.disabled = true;
 
     try {
       await updateDoc(doc(db, "orders", id), {
-        status: select.value
+        deliveryFee,
+        courierName,
+        trackingNumber,
+        status,
+        updatedAt: serverTimestamp()
       });
-      showMessage("Order status updated.");
+
+      showMessage("Order details updated successfully.");
       await loadOrders();
     } catch (error) {
-      showMessage("Status update failed: " + error.message);
+      showMessage("Order update failed: " + error.message);
+    } finally {
+      button.disabled = false;
     }
   });
 
@@ -199,7 +218,7 @@ async function saveProduct(event) {
 
   if (!name || !imageUrl || !Number.isFinite(price) ||
       !Number.isFinite(stock) || price < 0 || stock < 0) {
-    showMessage("Please check the product name, image URL, price and stock.");
+    showMessage("Please check product name, image URL, price and stock.");
     return;
   }
 
@@ -295,35 +314,49 @@ async function loadOrders() {
       return;
     }
 
-    orders.sort((a, b) => {
-      const at = a.createdAt?.toMillis?.() || 0;
-      const bt = b.createdAt?.toMillis?.() || 0;
-      return bt - at;
-    });
+    orders.sort((a, b) =>
+      (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)
+    );
 
     const statuses = ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"];
 
     list.innerHTML = orders.map(order => {
-      const currentStatus = statuses.includes(order.status) ? order.status : "pending";
+      const status = statuses.includes(order.status) ? order.status : "pending";
 
       return `
-        <article style="border:1px solid #ddd;border-radius:10px;padding:12px;margin:12px 0">
+        <article style="border:1px solid #eadde3;border-radius:12px;padding:14px;margin:12px 0">
           <strong>Order ID:</strong> ${safe(order.id)}
           <p><strong>Customer:</strong> ${safe(order.customerName)}</p>
           <p><strong>Phone:</strong> ${safe(order.phone)}</p>
           <p><strong>Address:</strong> ${safe(order.address)}</p>
           <p><strong>Items:</strong> ${safe(JSON.stringify(order.items || []))}</p>
-          <p><strong>Total:</strong> ৳${safe(order.total)}</p>
-          <p><strong>Delivery fee:</strong> ৳${safe(order.deliveryFee)}</p>
-          <label for="status-${safe(order.id)}">Order status</label>
-          <select id="status-${safe(order.id)}">
-            ${statuses.map(status => `
-              <option value="${status}" ${status === currentStatus ? "selected" : ""}>
-                ${status}
-              </option>
+          <p><strong>Subtotal:</strong> ৳${safe(order.total)}</p>
+
+          <label for="fee-${safe(order.id)}">Delivery Fee (৳)</label>
+          <input id="fee-${safe(order.id)}" type="number" min="0" step="1"
+            value="${safe(order.deliveryFee ?? 0)}" style="width:100%;box-sizing:border-box;padding:9px">
+
+          <label for="courier-${safe(order.id)}">Courier Name</label>
+          <input id="courier-${safe(order.id)}" maxlength="100"
+            value="${safe(order.courierName || "")}" placeholder="e.g. Pathao Courier"
+            style="width:100%;box-sizing:border-box;padding:9px">
+
+          <label for="tracking-${safe(order.id)}">Tracking Number</label>
+          <input id="tracking-${safe(order.id)}" maxlength="100"
+            value="${safe(order.trackingNumber || "")}" placeholder="Tracking number (optional)"
+            style="width:100%;box-sizing:border-box;padding:9px">
+
+          <label for="status-${safe(order.id)}">Order Status</label>
+          <select id="status-${safe(order.id)}" style="width:100%;padding:9px">
+            ${statuses.map(value => `
+              <option value="${value}" ${value === status ? "selected" : ""}>${value}</option>
             `).join("")}
           </select>
-          <button type="button" data-order-id="${safe(order.id)}">Update Status</button>
+
+          <button type="button" data-save-order="${safe(order.id)}"
+            style="margin-top:12px;padding:10px 14px;cursor:pointer">
+            Save Order Details
+          </button>
         </article>
       `;
     }).join("");

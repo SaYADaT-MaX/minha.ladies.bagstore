@@ -2,109 +2,245 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#8b3155">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e94f83">
   <title>My Orders | Minha Ladies Bag</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="./style.css">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+
   <style>
-    .orders-page {
-      max-width: 850px;
-      margin: 35px auto;
-      padding: 20px;
-    }
-
-    .orders-heading {
-      text-align: center;
-      margin-bottom: 25px;
-    }
-
-    .orders-card {
-      background: #fff;
-      border: 1px solid #eadde3;
-      border-radius: 14px;
-      padding: 20px;
-      margin-bottom: 18px;
-      overflow-wrap: anywhere;
-    }
-
-    .orders-card h2 {
-      color: #8b3155;
-      font-size: 19px;
-    }
-
-    .orders-status {
-      display: inline-block;
-      background: #fff0d6;
-      color: #855600;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: bold;
-    }
-
-    .orders-note {
-      background: #fff4f7;
-      padding: 15px;
-      border-radius: 10px;
-      line-height: 1.7;
-    }
-
-    .orders-button {
-      display: inline-block;
-      padding: 11px 18px;
-      background: #8b3155;
-      color: white;
-      border: 0;
-      border-radius: 8px;
-      text-decoration: none;
-      cursor: pointer;
-      margin-top: 10px;
-    }
+    .orders-page{max-width:900px;margin:auto;padding:35px 18px 60px}
+    .orders-heading{text-align:center;margin-bottom:25px}
+    .orders-card{background:#fff;border:1px solid #eadfd9;border-radius:12px;padding:20px;margin:18px 0;overflow-wrap:anywhere}
+    .orders-card h2{font-family:"Playfair Display",serif;color:#8b3155}
+    .orders-note{background:#fff5f8;padding:15px;border-radius:9px;line-height:1.7}
+    .order-meta{line-height:1.8}
+    .order-item{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eadfd9}
+    .orders-status{display:inline-block;background:#fff0d6;color:#855600;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:700}
+    .status-confirmed,.status-delivered{background:#e6f7eb;color:#206c36}
+    .status-cancelled{background:#ffe8e8;color:#a52222}
+    .orders-button{display:inline-block;padding:11px 18px;background:#e94f83;color:white;border:0;border-radius:7px;text-decoration:none;cursor:pointer;margin:10px 10px 0 0;font:inherit}
+    .orders-message{overflow-wrap:anywhere;white-space:pre-wrap}
+    .orders-total{font-size:19px;font-weight:700}
+    .hidden{display:none!important}
+    @media(max-width:650px){.orders-page{padding-top:25px}}
   </style>
 </head>
 <body>
+  <div class="announcement">Discover your next favourite bag ✨</div>
 
-  <header>
-    <div class="container">
-      <a href="index.html">Minha Ladies Bag</a>
-      <nav>
-        <a href="index.html">Home</a>
-        <a href="products.html">Products</a>
-        <a href="cart.html">My Bag</a>
-        <a href="my-orders.html">My Orders</a>
-      </nav>
-    </div>
+  <header class="header">
+    <a href="./index.html" class="brand-logo">
+      <img src="./IMG-20261021-WA0000.jpg" alt="MINHA Ladies Bag Logo" width="48" height="48">
+      <span class="brand-name">MINHA<small>LADIES BAG</small></span>
+    </a>
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+    <nav class="nav" id="mainNav">
+      <a href="./index.html">Home</a>
+      <a href="./products.html">Shop</a>
+      <a href="./about.html">Our Story</a>
+      <a href="./contact.html">Contact</a>
+      <a href="./faq.html">FAQs</a>
+      <a href="./my-orders.html">My Orders</a>
+    </nav>
+    <a href="./cart.html" class="cart-link">Bag <span class="cart-count" id="cartCount">0</span></a>
   </header>
 
   <main class="orders-page">
     <div class="orders-heading">
+      <span class="eyebrow">YOUR PURCHASES</span>
       <h1>My Orders</h1>
-      <p>Check your order confirmation and delivery status.</p>
+      <p>View your orders and check their delivery status.</p>
     </div>
 
     <div class="orders-note">
-      <strong>Your order history</strong>
-      <p>
-        Orders are saved in our online database. This page will display
-        your personal order history after secure order access is configured.
-      </p>
+      <strong>Your private order history</strong>
+      <p>Only orders connected to your current browser's Firebase account can be displayed here.</p>
     </div>
 
-    <section class="orders-card">
-      <h2>Order Tracking</h2>
-      <p id="ordersMessage" role="status">
-        Secure order tracking setup is required before orders can be displayed.
-      </p>
-      <a class="orders-button" href="products.html">Continue Shopping</a>
-    </section>
+    <p id="ordersMessage" class="orders-message" role="status" aria-live="polite">Loading your orders...</p>
+    <div id="ordersList"></div>
+
+    <a class="orders-button" href="./products.html">Continue Shopping</a>
+    <button class="orders-button" id="refreshOrders" type="button">Refresh Orders</button>
   </main>
 
-  <footer>
-    <div class="container">
-      <p>&copy; <span id="currentYear"></span> Minha Ladies Bag</p>
+  <footer class="footer">
+    <div class="footer-bottom">
+      <p>© <span id="currentYear">2026</span> Minha Ladies Bag. All rights reserved.</p>
     </div>
   </footer>
 
-  <script src="script.js"></script>
+  <script src="./script.js"></script>
+
+  <script type="module">
+    import { auth, db } from "./firebase-config.js";
+
+    import {
+      signInAnonymously,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+
+    import {
+      collection,
+      getDocs,
+      query,
+      where
+    } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
+
+    const message = document.getElementById("ordersMessage");
+    const list = document.getElementById("ordersList");
+    const refreshButton = document.getElementById("refreshOrders");
+
+    let currentUid = null;
+    let loading = false;
+
+    function money(value) {
+      return "৳" + Number(value || 0).toLocaleString("en-BD");
+    }
+
+    function safeText(value) {
+      return String(value ?? "");
+    }
+
+    function makeElement(tag, className, text) {
+      const element = document.createElement(tag);
+      if (className) element.className = className;
+      if (text !== undefined) element.textContent = text;
+      return element;
+    }
+
+    function formatDate(value) {
+      if (!value || typeof value.toDate !== "function") {
+        return "Date not available";
+      }
+      return value.toDate().toLocaleString("en-BD");
+    }
+
+    function renderOrder(order) {
+      const card = makeElement("article", "orders-card");
+      const heading = makeElement("h2", "", "Order #" + order.id);
+      card.appendChild(heading);
+
+      const date = makeElement("p", "order-meta", "Order date: " + formatDate(order.createdAt));
+      card.appendChild(date);
+
+      const status = safeText(order.status || "pending").toLowerCase();
+      const badgeClass = ["confirmed", "delivered"].includes(status)
+        ? "orders-status status-" + status
+        : status === "cancelled"
+          ? "orders-status status-cancelled"
+          : "orders-status";
+
+      card.appendChild(makeElement("span", badgeClass, "Status: " + status.toUpperCase()));
+
+      card.appendChild(makeElement("h3", "", "Items"));
+
+      (Array.isArray(order.items) ? order.items : []).forEach(item => {
+        const row = makeElement("div", "order-item");
+        const name = makeElement(
+          "span",
+          "",
+          safeText(item.name || "Ladies Bag") + " × " + Number(item.quantity || 0)
+        );
+        const price = makeElement(
+          "strong",
+          "",
+          money(Number(item.price || 0) * Number(item.quantity || 0))
+        );
+        row.append(name, price);
+        card.appendChild(row);
+      });
+
+      card.appendChild(makeElement("p", "order-meta", "Subtotal: " + money(order.total)));
+      card.appendChild(makeElement("p", "order-meta", "Delivery fee: " + money(order.deliveryFee)));
+      card.appendChild(makeElement(
+        "p",
+        "orders-total",
+        "Total: " + money(Number(order.total || 0) + Number(order.deliveryFee || 0))
+      ));
+
+      card.appendChild(makeElement(
+        "p",
+        "order-meta",
+        "Delivery details: " + safeText(order.address || "Not available")
+      ));
+
+      list.appendChild(card);
+    }
+
+    async function loadOrders() {
+      if (!currentUid || loading) return;
+
+      loading = true;
+      refreshButton.disabled = true;
+      message.textContent = "Loading your orders...";
+      list.replaceChildren();
+
+      try {
+        const ordersQuery = query(
+          collection(db, "orders"),
+          where("ownerUid", "==", currentUid)
+        );
+
+        const snapshot = await getDocs(ordersQuery);
+
+        const orders = snapshot.docs.map(item => ({
+          id: item.id,
+          ...item.data()
+        }));
+
+        orders.sort((a, b) => {
+          const dateA = a.createdAt?.toMillis?.() || 0;
+          const dateB = b.createdAt?.toMillis?.() || 0;
+          return dateB - dateA;
+        });
+
+        if (orders.length === 0) {
+          message.textContent =
+            "No orders found for this browser account yet. Orders placed before secure account linking may not appear here.";
+          return;
+        }
+
+        message.textContent = "You have " + orders.length +
+          (orders.length === 1 ? " order." : " orders.");
+
+        orders.forEach(renderOrder);
+
+      } catch (error) {
+        console.error("Order history error:", error);
+        message.textContent =
+          "Could not load your orders. " +
+          (error.message || "Please try again.") +
+          (error.code ? " (" + error.code + ")" : "");
+      } finally {
+        loading = false;
+        refreshButton.disabled = false;
+      }
+    }
+
+    refreshButton.addEventListener("click", loadOrders);
+
+    onAuthStateChanged(auth, async user => {
+      try {
+        if (!user) {
+          message.textContent = "Connecting your secure browser account...";
+          const result = await signInAnonymously(auth);
+          currentUid = result.user.uid;
+          await loadOrders();
+          return;
+        }
+
+        currentUid = user.uid;
+        await loadOrders();
+
+      } catch (error) {
+        console.error("Authentication error:", error);
+        message.textContent =
+          "Could not connect to your account. " +
+          (error.message || "Please reload the page.");
+      }
+    });
+  </script>
 </body>
 </html>

@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#e94f83">
   <title>Checkout | Minha Ladies Bag</title>
   <link rel="stylesheet" href="./style.css">
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
@@ -23,6 +24,7 @@
     .notice-box{padding:14px;background:#fff5f8;border-radius:9px;margin-top:18px;overflow-wrap:anywhere}
     .success-box{border:1px solid #9ac9a6;background:#f2fff5;padding:18px;border-radius:10px;margin-top:20px;overflow-wrap:anywhere}
     .hidden{display:none!important}
+    .checkout-link{display:inline-block;margin:10px 12px 0 0;color:#a12e5b;font-weight:700}
     @media(max-width:650px){.checkout-layout{grid-template-columns:1fr}.checkout-page{padding-top:25px}}
   </style>
 </head>
@@ -41,6 +43,7 @@
       <a href="./about.html">Our Story</a>
       <a href="./contact.html">Contact</a>
       <a href="./faq.html">FAQs</a>
+      <a href="./my-orders.html">My Orders</a>
     </nav>
     <a href="./cart.html" class="cart-link">Bag <span class="cart-count" id="cartCount">0</span></a>
   </header>
@@ -54,15 +57,16 @@
       <h2>Thank you for your order!</h2>
       <p>Your order has been submitted successfully.</p>
       <p><strong>Order reference:</strong> <span id="confirmationOrderId"></span></p>
-      <p><strong>Status:</strong> Pending confirmation</p>
-      <p>Save your order reference. You can contact the shop for updates.</p>
-      <a href="./products.html">Continue shopping</a>
+      <p><strong>Status:</strong> <span id="confirmationStatus">Pending</span></p>
+      <p>Your order reference is saved on this browser. Use My Orders to check your order status.</p>
+      <a class="checkout-link" href="./my-orders.html">View My Orders</a>
+      <a class="checkout-link" href="./products.html">Continue Shopping</a>
     </section>
 
     <div class="checkout-layout" id="checkoutLayout">
       <section class="checkout-box">
         <h2>Delivery Details</h2>
-        <form class="checkout-form" id="checkoutForm" onsubmit="return false;">
+        <form class="checkout-form" id="checkoutForm">
           <label for="customerName">Full Name</label>
           <input id="customerName" name="customerName" autocomplete="name" required maxlength="100">
 
@@ -99,12 +103,27 @@
   <script src="./script.js"></script>
 
   <script type="module">
-    import { db } from "./firebase-config.js";
+    import { auth, db } from "./firebase-config.js";
+
     import {
-      collection, doc, getDoc, addDoc, serverTimestamp
+      signInAnonymously,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
+
+    import {
+      collection,
+      doc,
+      getDoc,
+      addDoc,
+      query,
+      where,
+      getDocs,
+      orderBy,
+      serverTimestamp
     } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
     const CART_KEY = "minhaLadiesBagCart";
+    const LAST_ORDER_KEY = "minhaLadiesBagLastOrder";
     const form = document.getElementById("checkoutForm");
     const itemsElement = document.getElementById("orderItems");
     const subtotalElement = document.getElementById("subtotal");
@@ -115,11 +134,11 @@
     const cartCount = document.getElementById("cartCount");
     const confirmationBox = document.getElementById("confirmationBox");
     const confirmationOrderId = document.getElementById("confirmationOrderId");
+    const confirmationStatus = document.getElementById("confirmationStatus");
     const checkoutLayout = document.getElementById("checkoutLayout");
 
     let submitting = false;
-    let currentSubtotal = 0;
-    let currentDeliveryFee = null;
+    let authReady = false;
 
     function readCart() {
       try {
@@ -134,53 +153,108 @@
       return "৳" + Number(value).toLocaleString("en-BD");
     }
 
+    function showConfirmation(orderId, status = "pending") {
+      confirmationOrderId.textContent = orderId;
+      confirmationStatus.textContent = String(status);
+      confirmationBox.classList.remove("hidden");
+      checkoutLayout.classList.add("hidden");
+    }
+
+    async function restoreLastOrder() {
+      const orderId = localStorage.getItem(LAST_ORDER_KEY);
+      if (!orderId || !auth.currentUser) return false;
+
+      try {
+        const orderSnap = await getDoc(doc(db, "orders", orderId));
+        if (!orderSnap.exists()) return false;
+
+        const order = orderSnap.data();
+
+        if (order.ownerUid !== auth.currentUser.uid) {
+          return false;
+        }
+
+        showConfirmation(orderId, order.status || "pending");
+        return true;
+      } catch (error) {
+        console.warn("Could not restore last order:", error);
+        return false;
+      }
+    }
+
     function showCart() {
       const cart = readCart();
       itemsElement.replaceChildren();
-      currentSubtotal = 0;
+      let subtotal = 0;
+      let validItems = 0;
 
-      if (!cart.length) {
+      cart.forEach(item => {
+        const qty = Number(item.quantity);
+        const price = Number(item.price);
+
+        if (!Number.isInteger(qty) || qty < 1 ||
+            !Number.isFinite(price) || price < 0) return;
+
+        validItems++;
+        subtotal += price * qty;
+
+        const line = document.createElement("div");
+        line.className = "order-line";
+
+        const label = document.createElement("span");
+        label.textContent = `${item.name || "Ladies Bag"} × ${qty}`;
+
+        const amount = document.createElement("strong");
+        amount.textContent = money(price * qty);
+
+        line.append(label, amount);
+        itemsElement.appendChild(line);
+      });
+
+      if (validItems === 0) {
         itemsElement.textContent = "Your shopping bag is empty.";
-        submitButton.disabled = true;
-      } else {
-        submitButton.disabled = false;
-
-        cart.forEach(item => {
-          const qty = Math.floor(Number(item.quantity));
-          const price = Number(item.price);
-          if (!Number.isInteger(qty) || qty < 1 || !Number.isFinite(price) || price < 0) {
-            return;
-          }
-
-          currentSubtotal += price * qty;
-
-          const line = document.createElement("div");
-          line.className = "order-line";
-
-          const label = document.createElement("span");
-          label.textContent = `${item.name || "Ladies Bag"} × ${qty}`;
-
-          const amount = document.createElement("strong");
-          amount.textContent = money(price * qty);
-
-          line.append(label, amount);
-          itemsElement.appendChild(line);
-        });
       }
 
-      subtotalElement.textContent = money(currentSubtotal);
-      feeElement.textContent = currentDeliveryFee === null ? "To be confirmed" : money(currentDeliveryFee);
-      grandTotalElement.textContent = currentDeliveryFee === null
-        ? "Total: " + money(currentSubtotal) + " + delivery"
-        : "Total: " + money(currentSubtotal + currentDeliveryFee);
+      subtotalElement.textContent = money(subtotal);
+      feeElement.textContent = "To be confirmed";
+      grandTotalElement.textContent = "Total: " + money(subtotal) + " + delivery";
       cartCount.textContent = String(cart.reduce(
         (sum, item) => sum + Math.max(0, Number(item.quantity) || 0), 0
       ));
+
+      submitButton.disabled = validItems === 0 || !authReady;
     }
+
+    async function ensureAnonymousUser() {
+      if (auth.currentUser) return auth.currentUser;
+      const result = await signInAnonymously(auth);
+      return result.user;
+    }
+
+    onAuthStateChanged(auth, async user => {
+      try {
+        if (!user) {
+          await signInAnonymously(auth);
+          return;
+        }
+
+        authReady = true;
+        showCart();
+
+        const restored = await restoreLastOrder();
+        if (!restored) {
+          // Don't hide checkout just because the browser has no saved order.
+          checkoutLayout.classList.remove("hidden");
+        }
+      } catch (error) {
+        messageElement.textContent =
+          "Authentication error: " + (error.message || "Please reload and try again.");
+        submitButton.disabled = true;
+      }
+    });
 
     form.addEventListener("submit", async event => {
       event.preventDefault();
-      event.stopPropagation();
 
       if (submitting) return;
       messageElement.textContent = "";
@@ -198,6 +272,7 @@
       submitButton.textContent = "Placing Order...";
 
       try {
+        const user = await ensureAnonymousUser();
         const verifiedItems = [];
         let verifiedSubtotal = 0;
 
@@ -230,6 +305,7 @@
           }
 
           verifiedSubtotal += price * quantity;
+
           verifiedItems.push({
             productId: item.id,
             name: String(product.name || "Ladies Bag"),
@@ -246,11 +322,8 @@
           throw new Error("Please complete all delivery details.");
         }
 
-        /*
-          Delivery fee is temporarily 0 in the saved order.
-          Admin-controlled delivery fees require matching admin.js and Firestore updates.
-        */
         const order = {
+          ownerUid: user.uid,
           customerName,
           phone,
           address,
@@ -263,26 +336,25 @@
 
         const result = await addDoc(collection(db, "orders"), order);
 
-        // Only clear the cart after Firestore confirms successful creation.
+        // Save the order reference only after Firestore confirms success.
+        localStorage.setItem(LAST_ORDER_KEY, result.id);
         localStorage.removeItem(CART_KEY);
+
         showCart();
         form.reset();
-
-        confirmationOrderId.textContent = result.id;
-        confirmationBox.classList.remove("hidden");
-        checkoutLayout.classList.add("hidden");
+        showConfirmation(result.id, "pending");
         messageElement.textContent = "";
         window.scrollTo({ top: 0, behavior: "smooth" });
+
       } catch (error) {
         console.error("Order submission error:", error);
-
         const code = error?.code ? ` (${error.code})` : "";
         messageElement.textContent =
           (error?.message || "We couldn't submit your order. Please try again.") + code;
       } finally {
         submitting = false;
         submitButton.textContent = "Place Order";
-        submitButton.disabled = readCart().length === 0;
+        submitButton.disabled = readCart().length === 0 || !authReady;
       }
     });
 

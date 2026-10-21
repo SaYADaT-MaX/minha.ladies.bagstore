@@ -1249,3 +1249,47 @@ h2 {
     grid-template-columns: 1fr;
   }
 }
+/* FIX: Mobile Navigation Menu */
+@media (max-width: 768px) {
+  .header {
+    position: relative;
+    flex-wrap: wrap;
+  }
+
+  .menu-toggle {
+    display: block;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .nav {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    width: 100%;
+    max-width: 100%;
+    flex-basis: 100%;
+    gap: 0;
+    margin: 12px 0 0;
+    padding: 8px 0;
+    box-sizing: border-box;
+    background: #ffffff;
+    border-radius: 10px;
+    overflow: visible;
+  }
+
+  .nav.active {
+    display: flex;
+  }
+
+  .nav a {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 13px 18px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+}

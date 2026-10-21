@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f1eb">
   <title>Your Shopping Bag | Minha Ladies Bag</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+
   <style>
     .cart-page{max-width:900px;margin:auto;padding:35px 18px 60px}
     .cart-page h1{font-family:"Playfair Display",serif}
@@ -14,6 +18,7 @@
     .cart-item-info h2{font-size:17px;overflow-wrap:anywhere}
     .quantity-controls{display:flex;align-items:center;gap:10px;margin:8px 0}
     .quantity-controls button,.remove-btn{padding:7px 11px;border:1px solid #e4d8d0;border-radius:6px;background:#fff;cursor:pointer}
+    .quantity-controls button:disabled{opacity:.45;cursor:not-allowed}
     .remove-btn{color:#b42352}
     .cart-summary{margin-top:25px;padding:20px;background:#f8f1eb;border-radius:12px}
     .cart-total{font-size:22px;font-weight:700}
@@ -84,8 +89,12 @@
     }
 
     function saveCart(cart) {
-      localStorage.setItem(CART_KEY, JSON.stringify(cart));
-      renderCart();
+      try {
+        localStorage.setItem(CART_KEY, JSON.stringify(cart));
+        renderCart();
+      } catch {
+        alert("Could not save your cart. Please check your phone storage.");
+      }
     }
 
     function money(amount) {
@@ -111,8 +120,10 @@
         checkoutLink.style.opacity = "1";
 
         cart.forEach((item, index) => {
-          const quantity = Math.max(1, Number(item.quantity) || 1);
+          const quantity = Math.max(1, Math.floor(Number(item.quantity) || 1));
           const price = Math.max(0, Number(item.price) || 0);
+          const stock = Math.max(0, Math.floor(Number(item.stock) || 0));
+
           total += price * quantity;
           itemCount += quantity;
 
@@ -120,9 +131,12 @@
           row.className = "cart-item";
 
           const img = document.createElement("img");
-          img.alt = item.name || "Bag";
-          img.src = item.imageUrl || "";
-          img.addEventListener("error", () => img.removeAttribute("src"));
+          img.alt = item.name || "Ladies Bag";
+          if (item.imageUrl) img.src = item.imageUrl;
+          img.addEventListener("error", () => {
+            img.removeAttribute("src");
+            img.alt = "Product image unavailable";
+          });
 
           const info = document.createElement("div");
           info.className = "cart-item-info";
@@ -137,12 +151,19 @@
           controls.className = "quantity-controls";
 
           const minus = document.createElement("button");
+          minus.type = "button";
           minus.textContent = "−";
           minus.setAttribute("aria-label", "Decrease quantity");
           minus.disabled = quantity <= 1;
+
           minus.addEventListener("click", () => {
             const updated = readCart();
-            updated[index].quantity = Math.max(1, (Number(updated[index].quantity) || 1) - 1);
+            if (!updated[index]) return;
+
+            updated[index].quantity = Math.max(
+              1,
+              Math.floor(Number(updated[index].quantity) || 1) - 1
+            );
             saveCart(updated);
           });
 
@@ -150,11 +171,29 @@
           qty.textContent = String(quantity);
 
           const plus = document.createElement("button");
+          plus.type = "button";
           plus.textContent = "+";
           plus.setAttribute("aria-label", "Increase quantity");
+          plus.disabled = stock < 1 || quantity >= stock;
+          plus.title = plus.disabled ? "Available stock limit reached" : "Increase quantity";
+
           plus.addEventListener("click", () => {
             const updated = readCart();
-            updated[index].quantity = (Number(updated[index].quantity) || 1) + 1;
+            const currentItem = updated[index];
+            if (!currentItem) return;
+
+            const maxStock = Math.floor(Number(currentItem.stock) || 0);
+            const currentQty = Math.max(
+              1,
+              Math.floor(Number(currentItem.quantity) || 1)
+            );
+
+            if (maxStock < 1 || currentQty >= maxStock) {
+              alert("You've reached the available stock limit.");
+              return;
+            }
+
+            currentItem.quantity = currentQty + 1;
             saveCart(updated);
           });
 
@@ -164,8 +203,10 @@
           lineTotal.textContent = "Subtotal: " + money(price * quantity);
 
           const remove = document.createElement("button");
+          remove.type = "button";
           remove.className = "remove-btn";
           remove.textContent = "Remove";
+
           remove.addEventListener("click", () => {
             const updated = readCart();
             updated.splice(index, 1);

@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Checkout | Minha Ladies Bag</title>
+  <meta name="theme-color" content="#faf7f2">
   <meta name="robots" content="noindex, nofollow">
+  <title>Checkout | Minha Ladies Bag</title>
   <link rel="stylesheet" href="./style.css">
 
   <style>
@@ -40,7 +41,7 @@
       font-weight: 600;
     }
 
-    input, textarea, select {
+    input, textarea {
       width: 100%;
       padding: 12px;
       border: 1px solid #d9cfc5;
@@ -51,7 +52,8 @@
 
     textarea { min-height: 90px; resize: vertical; }
 
-    button {
+    button, .checkout-link {
+      display: block;
       width: 100%;
       padding: 14px;
       margin-top: 16px;
@@ -61,40 +63,57 @@
       color: white;
       font-size: 16px;
       font-weight: bold;
+      text-align: center;
+      text-decoration: none;
       cursor: pointer;
     }
 
-    button:disabled { opacity: .6; cursor: wait; }
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
 
     .summary-row {
       display: flex;
       justify-content: space-between;
       gap: 12px;
-      padding: 9px 0;
+      padding: 10px 0;
       border-bottom: 1px solid #eee5dc;
     }
 
     .summary-row span { overflow-wrap: anywhere; }
-    .grand-total { font-size: 18px; font-weight: bold; }
+    .summary-row strong { text-align: right; }
 
-    .payment-info {
-      margin-top: 14px;
+    .grand-total {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .notice {
       padding: 14px;
       border-radius: 10px;
-      background: #faf3ed;
+      background: #fff5e9;
+      border: 1px solid #f0ddc5;
       line-height: 1.7;
-      overflow-wrap: anywhere;
+      margin: 15px 0;
     }
 
-    .muted { color: #776d64; font-size: 14px; }
-    .hidden { display: none !important; }
+    .muted {
+      color: #776d64;
+      font-size: 14px;
+      line-height: 1.7;
+    }
 
     #message {
-      padding: 12px;
+      padding: 13px;
       border-radius: 8px;
       overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      line-height: 1.6;
+      margin-bottom: 16px;
     }
 
+    .hidden { display: none !important; }
     .success { background: #e9f7ec; color: #185c2a; }
     .error { background: #fff0ed; color: #8b2419; }
 
@@ -108,32 +127,42 @@
 <body>
   <main class="checkout-wrap">
     <h1>Checkout</h1>
-    <p class="muted">Complete your details to place your order.</p>
+    <p class="muted">
+      Submit your order first. The seller will confirm your order
+      and delivery charge before you make any online payment.
+    </p>
 
-    <div id="message" role="status" aria-live="polite" class="hidden"></div>
+    <div id="message" role="status" aria-live="polite"
+         class="hidden"></div>
 
     <section class="checkout-card">
       <h2>Order Summary</h2>
       <div id="cartItems">Loading cart...</div>
 
       <div class="summary-row">
-        <span>Subtotal</span>
+        <span>Product Subtotal</span>
         <strong id="subtotal">৳0</strong>
       </div>
 
       <div class="summary-row">
         <span>Delivery Fee</span>
-        <strong id="deliveryFee">To be confirmed</strong>
+        <strong>To be confirmed</strong>
       </div>
 
       <div class="summary-row grand-total">
-        <span>Estimated Total</span>
-        <strong id="grandTotal">To be confirmed</strong>
+        <span>Final Total</span>
+        <strong>After order confirmation</strong>
       </div>
 
-      <p class="muted">
-        The final delivery fee and total will be confirmed by the seller.
-      </p>
+      <div class="notice">
+        <strong>Payment Notice</strong>
+        <p>
+          You do not need to pay now. After reviewing your order,
+          the seller will confirm it and set the delivery charge.
+          You can then view your final bill and payment instructions
+          on the My Orders page.
+        </p>
+      </div>
     </section>
 
     <form id="checkoutForm">
@@ -141,54 +170,46 @@
         <h2>Customer Details</h2>
 
         <label for="customerName">Full Name *</label>
-        <input id="customerName" maxlength="100" required autocomplete="name">
+        <input id="customerName" name="customerName"
+               maxlength="100" required autocomplete="name">
 
         <label for="phone">Phone Number *</label>
-        <input id="phone" type="tel" maxlength="25"
-               required autocomplete="tel" placeholder="01XXXXXXXXX">
+        <input id="phone" name="phone" type="tel"
+               maxlength="25" required autocomplete="tel"
+               placeholder="01XXXXXXXXX">
 
         <label for="address">Full Delivery Address *</label>
-        <textarea id="address" maxlength="500" required
+        <textarea id="address" name="address"
+                  maxlength="500" required
                   autocomplete="street-address"
                   placeholder="House, area, upazila, district"></textarea>
       </section>
 
       <section class="checkout-card">
-        <h2>Payment Method</h2>
-
-        <label for="paymentMethod">Choose Payment Method *</label>
-        <select id="paymentMethod" required>
-          <option value="">Select a payment method</option>
-          <option value="cod">Cash on Delivery</option>
-          <option value="bkash">bKash</option>
-          <option value="nagad">Nagad</option>
-          <option value="rocket">Rocket</option>
-        </select>
-
-        <div id="paymentInstructions" class="payment-info hidden"></div>
-
-        <div id="transactionFields" class="hidden">
-          <label for="senderPhone">Sender's Payment Number *</label>
-          <input id="senderPhone" type="tel" maxlength="25"
-                 placeholder="Number used to send payment">
-
-          <label for="transactionId">Transaction ID (TrxID) *</label>
-          <input id="transactionId" maxlength="100"
-                 placeholder="Enter the exact transaction ID">
-
-          <p class="muted">
-            Submit the transaction details only after sending payment.
-            The seller must verify the transaction before marking it as paid.
-            Never share your PIN or OTP.
-          </p>
-        </div>
+        <h2>Payment</h2>
+        <p>
+          <strong>No advance payment is required at checkout.</strong>
+        </p>
+        <p class="muted">
+          Once your order is confirmed and the delivery fee is set,
+          the My Orders page will show the next payment steps.
+          Cash on Delivery may be handled according to the seller's
+          confirmation.
+        </p>
       </section>
 
-      <button id="placeOrderButton" type="submit">Place Order</button>
+      <button id="placeOrderButton" type="submit" disabled>
+        Loading Checkout...
+      </button>
     </form>
 
+    <a class="checkout-link" href="./my-orders.html">
+      View My Orders
+    </a>
+
     <p class="muted">
-      Need help? Contact the seller using the contact details on the website.
+      Need help? Contact the seller using the contact details on
+      the website. Never share your payment PIN or OTP.
     </p>
   </main>
 
@@ -211,34 +232,35 @@
 
     const cartItemsBox = document.getElementById("cartItems");
     const subtotalBox = document.getElementById("subtotal");
-    const deliveryFeeBox = document.getElementById("deliveryFee");
-    const grandTotalBox = document.getElementById("grandTotal");
     const form = document.getElementById("checkoutForm");
-    const paymentMethod = document.getElementById("paymentMethod");
-    const instructions = document.getElementById("paymentInstructions");
-    const transactionFields = document.getElementById("transactionFields");
     const placeButton = document.getElementById("placeOrderButton");
     const messageBox = document.getElementById("message");
 
     let cart = [];
     let cartSubtotal = 0;
-    let settings = {};
     let authReady = false;
     let submitting = false;
+    let cartValid = true;
 
     function money(value) {
-      return "৳" + Number(value || 0).toLocaleString("en-BD");
+      const amount = Number(value);
+      return "৳" + (
+        Number.isFinite(amount) ? amount : 0
+      ).toLocaleString("en-BD");
     }
 
     function showMessage(text, type = "error") {
       messageBox.textContent = text;
       messageBox.className = type;
       messageBox.classList.remove("hidden");
+      messageBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
 
     function readCart() {
       try {
-        const saved = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+        const saved = JSON.parse(
+          localStorage.getItem(CART_KEY) || "[]"
+        );
         return Array.isArray(saved) ? saved : [];
       } catch {
         return [];
@@ -253,121 +275,90 @@
       return Number(item?.quantity ?? item?.qty ?? 1);
     }
 
-    function safeText(value) {
-      return String(value ?? "").replace(/[&<>"']/g, char => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-      })[char]);
-    }
-
     function renderCart() {
       cart = readCart();
       cartSubtotal = 0;
+      cartValid = cart.length > 0;
+      cartItemsBox.replaceChildren();
 
       if (!cart.length) {
         cartItemsBox.textContent = "Your cart is empty.";
         subtotalBox.textContent = money(0);
-        deliveryFeeBox.textContent = "To be confirmed";
-        grandTotalBox.textContent = "To be confirmed";
         placeButton.disabled = true;
+        placeButton.textContent = "Cart Is Empty";
         return;
       }
 
-      cartItemsBox.innerHTML = cart.map(item => {
-        const name = item.name || item.productName || "Product";
+      for (const item of cart) {
+        const name = String(item?.name || item?.productName || "Product");
         const quantity = getQuantity(item);
-        const price = Number(item.price ?? item.unitPrice ?? 0);
+        const price = Number(item?.price ?? item?.unitPrice ?? 0);
 
-        if (!Number.isInteger(quantity) || quantity < 1 ||
-            !Number.isFinite(price) || price < 0) {
-          return `<p>Invalid cart item. Please return to your cart.</p>`;
+        if (
+          !getProductId(item) ||
+          !Number.isInteger(quantity) ||
+          quantity < 1 ||
+          !Number.isFinite(price) ||
+          price < 0
+        ) {
+          cartValid = false;
+          const error = document.createElement("p");
+          error.textContent =
+            "A cart item is invalid. Please return to your cart and update it.";
+          cartItemsBox.appendChild(error);
+          continue;
         }
 
-        cartSubtotal += price * quantity;
+        const lineTotal = price * quantity;
+        cartSubtotal += lineTotal;
 
-        return `
-          <div class="summary-row">
-            <span>${safeText(name)} × ${quantity}</span>
-            <strong>${money(price * quantity)}</strong>
-          </div>
-        `;
-      }).join("");
+        const row = document.createElement("div");
+        row.className = "summary-row";
+
+        const nameBox = document.createElement("span");
+        nameBox.textContent = `${name} × ${quantity}`;
+
+        const priceBox = document.createElement("strong");
+        priceBox.textContent = money(lineTotal);
+
+        row.append(nameBox, priceBox);
+        cartItemsBox.appendChild(row);
+      }
 
       subtotalBox.textContent = money(cartSubtotal);
-      deliveryFeeBox.textContent = "To be confirmed";
-      grandTotalBox.textContent = "To be confirmed";
-      placeButton.disabled = !authReady;
+
+      placeButton.disabled = !authReady || !cartValid || submitting;
+      placeButton.textContent = submitting
+        ? "Placing Order..."
+        : authReady
+          ? "Place Order — Pay Later"
+          : "Connecting...";
     }
-
-    async function loadPaymentSettings() {
-      try {
-        const snapshot = await getDoc(doc(db, "settings", "payment"));
-        settings = snapshot.exists() ? snapshot.data() : {};
-      } catch (error) {
-        console.error("Could not load payment settings:", error);
-        settings = {};
-      }
-      updatePaymentInstructions();
-    }
-
-    function updatePaymentInstructions() {
-      const method = paymentMethod.value;
-
-      transactionFields.classList.toggle("hidden", !["bkash", "nagad", "rocket"].includes(method));
-
-      if (!method || method === "cod") {
-        instructions.classList.add("hidden");
-        instructions.textContent = "";
-        return;
-      }
-
-      const labels = {
-        bkash: "bKash",
-        nagad: "Nagad",
-        rocket: "Rocket"
-      };
-
-      const numberKeys = {
-        bkash: "bkashNumber",
-        nagad: "nagadNumber",
-        rocket: "rocketNumber"
-      };
-
-      const number = String(settings[numberKeys[method]] || "").trim();
-
-      instructions.classList.remove("hidden");
-      instructions.textContent = number
-        ? `${labels[method]} payment number: ${number}. Send payment to this number, then enter your sender number and TrxID below.`
-        : `${labels[method]} payment number has not been configured yet. Please contact the seller before paying.`;
-
-      if (method !== "cod" && !number) {
-        placeButton.disabled = true;
-      } else {
-        placeButton.disabled = !authReady || !cart.length || submitting;
-      }
-    }
-
-    paymentMethod.addEventListener("change", updatePaymentInstructions);
 
     async function ensureUser() {
       if (!auth.currentUser) {
         await signInAnonymously(auth);
       }
-      authReady = Boolean(auth.currentUser);
+
+      if (!auth.currentUser) {
+        throw new Error("Could not connect to your browser account.");
+      }
+
+      authReady = true;
       renderCart();
-      updatePaymentInstructions();
     }
 
     ensureUser().catch(error => {
-      console.error(error);
-      showMessage("Could not initialize checkout. Please refresh and try again.");
+      console.error("Checkout authentication error:", error);
+      authReady = false;
       placeButton.disabled = true;
+
+      showMessage(
+        "Could not initialize checkout. " +
+        (error.message || "Please refresh and try again.")
+      );
     });
 
-    loadPaymentSettings();
     renderCart();
 
     form.addEventListener("submit", async event => {
@@ -376,55 +367,38 @@
       if (submitting) return;
 
       const user = auth.currentUser;
+
       if (!user) {
         showMessage("Please wait for checkout to finish loading.");
         return;
       }
 
-      const customerName = document.getElementById("customerName").value.trim();
-      const phone = document.getElementById("phone").value.trim();
-      const address = document.getElementById("address").value.trim();
-      const method = paymentMethod.value;
-
-      const senderPhone = document.getElementById("senderPhone").value.trim();
-      const transactionId = document.getElementById("transactionId").value.trim();
-
-      if (!customerName || !phone || !address || !method) {
-        showMessage("Please complete all required customer and payment fields.");
+      if (!cartValid || !cart.length) {
+        showMessage("Your cart is empty or contains an invalid item.");
         return;
       }
 
-      if (!cart.length) {
-        showMessage("Your cart is empty.");
+      const customerName =
+        document.getElementById("customerName").value.trim();
+      const phone =
+        document.getElementById("phone").value.trim();
+      const address =
+        document.getElementById("address").value.trim();
+
+      if (!customerName || !phone || !address) {
+        showMessage("Please complete all required customer details.");
         return;
-      }
-
-      if (["bkash", "nagad", "rocket"].includes(method)) {
-        const numberKey = {
-          bkash: "bkashNumber",
-          nagad: "nagadNumber",
-          rocket: "rocketNumber"
-        }[method];
-
-        if (!String(settings[numberKey] || "").trim()) {
-          showMessage("The seller has not configured this payment number yet. Please contact the seller.");
-          return;
-        }
-
-        if (!senderPhone || !transactionId) {
-          showMessage("Enter the sender's number and transaction ID.");
-          return;
-        }
       }
 
       submitting = true;
       placeButton.disabled = true;
-      placeButton.textContent = "Placing Order...";
+      placeButton.textContent = "Checking Products...";
 
       try {
         let verifiedSubtotal = 0;
         const verifiedItems = [];
 
+        // Read current product prices and stock from Firestore.
         for (const item of cart) {
           const productId = getProductId(item);
           const quantity = getQuantity(item);
@@ -433,16 +407,22 @@
             throw new Error("A cart item is invalid. Please update your cart.");
           }
 
-          const productSnapshot = await getDoc(doc(db, "products", productId));
+          const productSnapshot = await getDoc(
+            doc(db, "products", productId)
+          );
 
           if (!productSnapshot.exists()) {
-            throw new Error("A product is no longer available. Please update your cart.");
+            throw new Error(
+              "A product is no longer available. Please update your cart."
+            );
           }
 
           const product = productSnapshot.data();
 
           if (product.active !== true) {
-            throw new Error(`${product.name || "A product"} is currently unavailable.`);
+            throw new Error(
+              `${product.name || "A product"} is currently unavailable.`
+            );
           }
 
           const price = Number(product.price);
@@ -453,7 +433,9 @@
           }
 
           if (!Number.isFinite(stock) || stock < quantity) {
-            throw new Error(`${product.name || "A product"} does not have enough stock.`);
+            throw new Error(
+              `${product.name || "A product"} does not have enough stock.`
+            );
           }
 
           const lineTotal = price * quantity;
@@ -468,8 +450,9 @@
           });
         }
 
-        const isOnlinePayment = ["bkash", "nagad", "rocket"].includes(method);
-
+        // Keep the initial document compatible with the existing
+        // basic order fields. Admin/payment fields are added in the
+        // coordinated Admin Panel and Firestore Rules update.
         const orderData = {
           ownerUid: user.uid,
           customerName,
@@ -479,40 +462,52 @@
           total: verifiedSubtotal,
           deliveryFee: 0,
           status: "pending",
-          paymentMethod: method,
-          paymentStatus: isOnlinePayment ? "unverified" : "unpaid",
           createdAt: serverTimestamp()
         };
 
-        if (isOnlinePayment) {
-          orderData.senderPhone = senderPhone;
-          orderData.transactionId = transactionId;
-        }
+        placeButton.textContent = "Saving Order...";
 
-        const orderRef = await addDoc(collection(db, "orders"), orderData);
+        const orderRef = await addDoc(
+          collection(db, "orders"),
+          orderData
+        );
 
+        // Clear cart only after Firestore confirms the order was saved.
         localStorage.removeItem(CART_KEY);
         cart = [];
         renderCart();
-
         form.reset();
-        transactionFields.classList.add("hidden");
-        instructions.classList.add("hidden");
 
         showMessage(
-          `Order placed successfully! Your Order ID is ${orderRef.id}. Save this ID for your records. Payment status: ${isOnlinePayment ? "Awaiting seller verification" : "Unpaid / Cash on Delivery"}.`,
+          "Order submitted successfully!\n" +
+          "Order ID: " + orderRef.id + "\n\n" +
+          "Payment is not required now. The seller will review your " +
+          "order and set the delivery fee. Check My Orders for the " +
+          "confirmation and final bill.",
           "success"
         );
 
         placeButton.textContent = "Order Placed";
         placeButton.disabled = true;
+
       } catch (error) {
-        console.error(error);
-        showMessage("Order failed: " + (error.message || "Please try again."));
+        console.error("Order submission error:", error);
+
+        showMessage(
+          "Order failed: " +
+          (error.message || "Please try again.") +
+          (error.code ? "\nError code: " + error.code : "")
+        );
+
         placeButton.disabled = false;
-        placeButton.textContent = "Place Order";
+        placeButton.textContent = "Place Order — Pay Later";
+
       } finally {
         submitting = false;
+
+        if (cart.length) {
+          placeButton.disabled = !authReady || !cartValid;
+        }
       }
     });
   </script>

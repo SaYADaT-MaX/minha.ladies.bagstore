@@ -13,6 +13,8 @@ import {
   updateDoc,
   deleteDoc,
   doc,
+  getDoc,
+  setDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
@@ -27,6 +29,7 @@ const message = document.getElementById("message");
 
 let editingId = null;
 let productsCache = [];
+let savingSettings = false;
 
 function safe(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -63,23 +66,18 @@ function getOrderItems(items) {
   return [];
 }
 
-/* Display order items as neat, responsive cards */
 function renderOrderItems(items) {
   const normalized = getOrderItems(items);
 
   if (!normalized.length) {
-    return `<p class="items-empty">No item details available.</p>`;
+    return `<p>No item details available.</p>`;
   }
 
   return `
     <div class="order-items-list">
       ${normalized.map((item, index) => {
         if (!item || typeof item !== "object") {
-          return `
-            <div class="order-item">
-              <div class="item-name">${safe(item ?? "Product")}</div>
-            </div>
-          `;
+          return `<div class="order-item">${safe(item ?? "Product")}</div>`;
         }
 
         const name =
@@ -92,12 +90,10 @@ function renderOrderItems(items) {
         const quantity = Number(item.quantity ?? item.qty ?? 1);
         const price = Number(item.price ?? item.unitPrice);
         const explicitTotal = item.subtotal ?? item.lineTotal;
-
-        const hasPrice = Number.isFinite(price);
-        const hasQuantity = Number.isFinite(quantity);
-        const calculatedTotal = hasPrice && hasQuantity
-          ? price * quantity
-          : null;
+        const calculatedTotal =
+          Number.isFinite(price) && Number.isFinite(quantity)
+            ? price * quantity
+            : null;
 
         const lineTotal = explicitTotal != null
           ? Number(explicitTotal)
@@ -105,21 +101,15 @@ function renderOrderItems(items) {
 
         return `
           <div class="order-item">
-            <div class="item-top">
-              <strong class="item-name">${safe(name)}</strong>
-              <span class="item-number">#${index + 1}</span>
-            </div>
-
-            <div class="item-meta">
-              <span>Qty: <strong>${hasQuantity ? safe(quantity) : "—"}</strong></span>
-              <span>Unit price: <strong>${hasPrice ? safe(money(price)) : "—"}</strong></span>
-            </div>
-
-            ${Number.isFinite(lineTotal) ? `
-              <div class="item-total">
-                Item total: <strong>${safe(money(lineTotal))}</strong>
-              </div>
-            ` : ""}
+            <strong>${safe(name)}</strong>
+            <p>Item #${index + 1}</p>
+            <p>Quantity: ${safe(quantity)}</p>
+            <p>Unit price: ${safe(money(price))}</p>
+            ${
+              Number.isFinite(lineTotal)
+                ? `<p>Item total: <strong>${safe(money(lineTotal))}</strong></p>`
+                : ""
+            }
           </div>
         `;
       }).join("")}
@@ -138,8 +128,8 @@ function showDashboard() {
     <style>
       #dashboard {
         width: 100%;
-        min-width: 0;
         max-width: 100%;
+        min-width: 0;
         overflow-wrap: anywhere;
       }
 
@@ -164,7 +154,6 @@ function showDashboard() {
 
       #dashboard input[type="checkbox"] {
         width: auto;
-        max-width: none;
       }
 
       #dashboard label {
@@ -196,26 +185,18 @@ function showDashboard() {
         min-width: 0;
       }
 
-      #dashboard .admin-list {
-        min-width: 0;
-        width: 100%;
-      }
-
       #dashboard .admin-card {
         width: 100%;
         min-width: 0;
-        max-width: 100%;
         padding: 14px;
         margin: 14px 0;
         border: 1px solid #eadde3;
         border-radius: 12px;
         background: #fff;
-        overflow: hidden;
         overflow-wrap: anywhere;
       }
 
       #dashboard .admin-card p {
-        margin: 9px 0;
         line-height: 1.55;
         overflow-wrap: anywhere;
         word-break: break-word;
@@ -225,71 +206,15 @@ function showDashboard() {
         display: grid;
         grid-template-columns: minmax(0, 1fr);
         gap: 10px;
-        width: 100%;
-        min-width: 0;
         margin-top: 10px;
       }
 
       #dashboard .order-item {
-        width: 100%;
         min-width: 0;
         padding: 12px;
         border: 1px solid #eadde3;
         border-radius: 9px;
         background: #fcf8fa;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-      }
-
-      #dashboard .item-top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 8px;
-        min-width: 0;
-      }
-
-      #dashboard .item-name {
-        min-width: 0;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-        line-height: 1.5;
-      }
-
-      #dashboard .item-number {
-        flex-shrink: 0;
-        font-size: 12px;
-        color: #766771;
-      }
-
-      #dashboard .item-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px 16px;
-        margin-top: 10px;
-        font-size: 13px;
-        color: #66535d;
-      }
-
-      #dashboard .item-meta span {
-        overflow-wrap: anywhere;
-      }
-
-      #dashboard .item-total {
-        margin-top: 10px;
-        padding-top: 9px;
-        border-top: 1px solid #eadde3;
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        gap: 6px;
-        font-size: 14px;
-      }
-
-      #dashboard .items-empty {
-        padding: 10px;
-        background: #fcf8fa;
-        border-radius: 8px;
         overflow-wrap: anywhere;
       }
 
@@ -307,10 +232,6 @@ function showDashboard() {
         gap: 6px 12px;
       }
 
-      #dashboard .order-summary strong {
-        overflow-wrap: anywhere;
-      }
-
       #dashboard .save-order {
         width: 100%;
         padding: 12px;
@@ -323,21 +244,24 @@ function showDashboard() {
         cursor: pointer;
       }
 
-      #dashboard .save-order:disabled {
-        opacity: .6;
-        cursor: wait;
-      }
-
-      #dashboard .admin-card button {
-        margin-top: 10px;
-        padding: 10px 14px;
-        cursor: pointer;
-      }
-
       #dashboard .admin-divider {
         margin: 22px 0;
         border: 0;
         border-top: 1px solid #eadde3;
+      }
+
+      #dashboard .payment-box {
+        padding: 12px;
+        margin: 12px 0;
+        background: #fcf8fa;
+        border: 1px solid #eadde3;
+        border-radius: 9px;
+      }
+
+      #dashboard .help-text {
+        font-size: 13px;
+        color: #766771;
+        line-height: 1.6;
       }
 
       @media (min-width: 600px) {
@@ -350,10 +274,6 @@ function showDashboard() {
         #dashboard .admin-card {
           padding: 10px;
         }
-
-        #dashboard .item-meta {
-          gap: 8px;
-        }
       }
     </style>
 
@@ -363,6 +283,34 @@ function showDashboard() {
     </div>
 
     <p id="panelMessage" role="status" aria-live="polite"></p>
+
+    <hr class="admin-divider">
+
+    <section class="admin-section">
+      <h3>Payment Settings</h3>
+      <p class="help-text">
+        Enter the receiving numbers that customers should use at checkout.
+        Only enter numbers owned or authorized by the seller.
+      </p>
+
+      <form id="paymentSettingsForm">
+        <label for="bkashNumber">bKash Number</label>
+        <input id="bkashNumber" type="tel" maxlength="25"
+               placeholder="Enter bKash number">
+
+        <label for="nagadNumber">Nagad Number</label>
+        <input id="nagadNumber" type="tel" maxlength="25"
+               placeholder="Enter Nagad number">
+
+        <label for="rocketNumber">Rocket Number</label>
+        <input id="rocketNumber" type="tel" maxlength="25"
+               placeholder="Enter Rocket number">
+
+        <button id="savePaymentSettings" type="submit">
+          Save Payment Numbers
+        </button>
+      </form>
+    </section>
 
     <hr class="admin-divider">
 
@@ -380,7 +328,8 @@ function showDashboard() {
         <input id="pStock" type="number" min="0" step="1" required>
 
         <label for="pImage">Image URL *</label>
-        <input id="pImage" type="url" required placeholder="https://example.com/bag.jpg">
+        <input id="pImage" type="url" required
+               placeholder="https://example.com/bag.jpg">
 
         <label for="pCategory">Category</label>
         <input id="pCategory" placeholder="Handbags">
@@ -393,7 +342,6 @@ function showDashboard() {
           Show this product on the website
         </label>
 
-        <br><br>
         <button id="saveProduct" type="submit">Save Product</button>
         <button id="cancelEdit" type="button" hidden>Cancel Edit</button>
       </form>
@@ -404,16 +352,20 @@ function showDashboard() {
     <section class="admin-section">
       <h3>Products</h3>
       <button id="refreshProducts" type="button">Refresh Products</button>
-      <div id="productsList" class="admin-list">Loading products...</div>
+      <div id="productsList">Loading products...</div>
     </section>
 
     <hr class="admin-divider">
 
     <section class="admin-section">
-      <h3>Customer Orders</h3>
-      <p>Edit an order's delivery fee and courier details, then save the changes.</p>
+      <h3>Customer Orders & Payment Verification</h3>
+      <p class="help-text">
+        Verify online payments using the seller's own payment account before
+        changing a payment status to Paid. Never mark a payment as Paid based
+        on a transaction ID alone.
+      </p>
       <button id="refreshOrders" type="button">Refresh Orders</button>
-      <div id="ordersList" class="admin-list">Loading orders...</div>
+      <div id="ordersList">Loading orders...</div>
     </section>
   `;
 
@@ -423,6 +375,9 @@ function showDashboard() {
     passwordInput.value = "";
     showLogin();
   });
+
+  document.getElementById("paymentSettingsForm")
+    .addEventListener("submit", savePaymentSettings);
 
   document.getElementById("productForm").addEventListener("submit", saveProduct);
   document.getElementById("cancelEdit").addEventListener("click", resetForm);
@@ -439,6 +394,7 @@ function showDashboard() {
 
     if (button.dataset.action === "edit") {
       editingId = id;
+
       document.getElementById("formHeading").textContent = "Edit Product";
       document.getElementById("pName").value = product.name || "";
       document.getElementById("pPrice").value = product.price ?? 0;
@@ -449,6 +405,7 @@ function showDashboard() {
       document.getElementById("pActive").checked = product.active === true;
       document.getElementById("saveProduct").textContent = "Update Product";
       document.getElementById("cancelEdit").hidden = false;
+
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
@@ -469,13 +426,21 @@ function showDashboard() {
     const button = event.target.closest("button[data-save-order]");
     if (!button) return;
 
+    // Do not allow a non-admin session to make changes.
+    if (!auth.currentUser || auth.currentUser.uid !== ADMIN_UID) {
+      showMessage("Unauthorized. Please log in as the admin.");
+      return;
+    }
+
     const id = button.dataset.saveOrder;
     const feeInput = document.getElementById("fee-" + id);
     const courierInput = document.getElementById("courier-" + id);
     const trackingInput = document.getElementById("tracking-" + id);
     const statusInput = document.getElementById("status-" + id);
+    const paymentStatusInput = document.getElementById("payment-" + id);
 
-    if (!feeInput || !courierInput || !trackingInput || !statusInput) {
+    if (!feeInput || !courierInput || !trackingInput ||
+        !statusInput || !paymentStatusInput) {
       showMessage("Could not find the order fields. Refresh orders and try again.");
       return;
     }
@@ -484,24 +449,58 @@ function showDashboard() {
     const courierName = courierInput.value.trim();
     const trackingNumber = trackingInput.value.trim();
     const status = statusInput.value;
+    const paymentStatus = paymentStatusInput.value;
+
+    const allowedOrderStatuses = [
+      "pending", "confirmed", "processing", "shipped",
+      "delivered", "cancelled"
+    ];
+
+    const allowedPaymentStatuses = [
+      "unverified", "unpaid", "paid", "rejected"
+    ];
 
     if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
       showMessage("Delivery fee must be zero or a positive number.");
       return;
     }
 
+    if (!allowedOrderStatuses.includes(status) ||
+        !allowedPaymentStatuses.includes(paymentStatus)) {
+      showMessage("Invalid order or payment status.");
+      return;
+    }
+
     button.disabled = true;
 
     try {
-      await updateDoc(doc(db, "orders", id), {
+      const orderRef = doc(db, "orders", id);
+      const latestOrder = await getDoc(orderRef);
+
+      if (!latestOrder.exists()) {
+        throw new Error("This order no longer exists.");
+      }
+
+      const orderData = latestOrder.data();
+
+      // A customer must not be able to set paymentStatus to Paid
+      // through the customer-facing website. Security Rules must also
+      // enforce that only the authorized admin can do this.
+      await updateDoc(orderRef, {
         deliveryFee,
         courierName,
         trackingNumber,
         status,
+        paymentStatus,
         updatedAt: serverTimestamp()
       });
 
-      showMessage("Order details updated successfully.");
+      showMessage(
+        paymentStatus === "paid"
+          ? "Order saved. Make sure the payment was verified in the seller's account."
+          : "Order and payment details saved."
+      );
+
       await loadOrders();
     } catch (error) {
       showMessage("Order update failed: " + error.message);
@@ -510,8 +509,65 @@ function showDashboard() {
     }
   });
 
+  loadPaymentSettings();
   loadProducts();
   loadOrders();
+}
+
+async function loadPaymentSettings() {
+  const form = document.getElementById("paymentSettingsForm");
+  if (!form) return;
+
+  try {
+    const snapshot = await getDoc(doc(db, "settings", "payment"));
+    const settings = snapshot.exists() ? snapshot.data() : {};
+
+    document.getElementById("bkashNumber").value =
+      settings.bkashNumber || "";
+
+    document.getElementById("nagadNumber").value =
+      settings.nagadNumber || "";
+
+    document.getElementById("rocketNumber").value =
+      settings.rocketNumber || "";
+  } catch (error) {
+    showMessage("Could not load payment settings: " + error.message);
+  }
+}
+
+async function savePaymentSettings(event) {
+  event.preventDefault();
+
+  if (savingSettings) return;
+
+  if (!auth.currentUser || auth.currentUser.uid !== ADMIN_UID) {
+    showMessage("Unauthorized. Please log in as the admin.");
+    return;
+  }
+
+  const bkashNumber = document.getElementById("bkashNumber").value.trim();
+  const nagadNumber = document.getElementById("nagadNumber").value.trim();
+  const rocketNumber = document.getElementById("rocketNumber").value.trim();
+
+  const saveButton = document.getElementById("savePaymentSettings");
+  savingSettings = true;
+  saveButton.disabled = true;
+
+  try {
+    await setDoc(doc(db, "settings", "payment"), {
+      bkashNumber,
+      nagadNumber,
+      rocketNumber,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    showMessage("Payment numbers saved successfully.");
+  } catch (error) {
+    showMessage("Could not save payment numbers: " + error.message);
+  } finally {
+    savingSettings = false;
+    saveButton.disabled = false;
+  }
 }
 
 function resetForm() {
@@ -525,6 +581,11 @@ function resetForm() {
 
 async function saveProduct(event) {
   event.preventDefault();
+
+  if (!auth.currentUser || auth.currentUser.uid !== ADMIN_UID) {
+    showMessage("Unauthorized. Please log in as the admin.");
+    return;
+  }
 
   const name = document.getElementById("pName").value.trim();
   const price = Number(document.getElementById("pPrice").value);
@@ -586,6 +647,7 @@ async function loadProducts() {
 
   try {
     const snapshot = await getDocs(collection(db, "products"));
+
     productsCache = snapshot.docs.map(item => ({
       id: item.id,
       ...item.data()
@@ -602,8 +664,12 @@ async function loadProducts() {
         <p>Price: ${safe(money(product.price))} | Stock: ${safe(product.stock)}</p>
         <p>Category: ${safe(product.category || "-")}</p>
         <p>Status: ${product.active === true ? "Visible" : "Hidden"}</p>
-        <button type="button" data-action="edit" data-id="${safe(product.id)}">Edit</button>
-        <button type="button" data-action="delete" data-id="${safe(product.id)}">Delete</button>
+        <button type="button" data-action="edit" data-id="${safe(product.id)}">
+          Edit
+        </button>
+        <button type="button" data-action="delete" data-id="${safe(product.id)}">
+          Delete
+        </button>
       </article>
     `).join("");
   } catch (error) {
@@ -619,6 +685,7 @@ async function loadOrders() {
 
   try {
     const snapshot = await getDocs(collection(db, "orders"));
+
     const orders = snapshot.docs.map(item => ({
       id: item.id,
       ...item.data()
@@ -630,16 +697,17 @@ async function loadOrders() {
     }
 
     orders.sort((a, b) =>
-      (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0)
+      (b.createdAt?.toMillis?.() || 0) -
+      (a.createdAt?.toMillis?.() || 0)
     );
 
     const statuses = [
-      "pending",
-      "confirmed",
-      "processing",
-      "shipped",
-      "delivered",
-      "cancelled"
+      "pending", "confirmed", "processing",
+      "shipped", "delivered", "cancelled"
+    ];
+
+    const paymentStatuses = [
+      "unverified", "unpaid", "paid", "rejected"
     ];
 
     list.innerHTML = orders.map(order => {
@@ -647,18 +715,35 @@ async function loadOrders() {
         ? order.status
         : "pending";
 
+      const paymentStatus = paymentStatuses.includes(order.paymentStatus)
+        ? order.paymentStatus
+        : (order.paymentMethod === "cod" ? "unpaid" : "unverified");
+
       const subtotal = Number(order.total);
       const deliveryFee = Number(order.deliveryFee ?? 0);
-      const grandTotal = Number.isFinite(subtotal)
-        ? subtotal + (Number.isFinite(deliveryFee) ? deliveryFee : 0)
+
+      const grandTotal = Number.isFinite(subtotal) &&
+                         Number.isFinite(deliveryFee)
+        ? subtotal + deliveryFee
         : null;
+
+      const paymentLabels = {
+        cod: "Cash on Delivery",
+        bkash: "bKash",
+        nagad: "Nagad",
+        rocket: "Rocket"
+      };
+
+      const method = paymentLabels[order.paymentMethod] ||
+                     order.paymentMethod ||
+                     "Not specified";
 
       return `
         <article class="admin-card">
-          <div>
-            <strong>Order ID:</strong>
-            <span>${safe(order.id)}</span>
-          </div>
+          <p>
+            <strong>Order ID:</strong><br>
+            ${safe(order.id)}
+          </p>
 
           <p><strong>Customer:</strong> ${safe(order.customerName || "-")}</p>
           <p><strong>Phone:</strong> ${safe(order.phone || "-")}</p>
@@ -681,6 +766,30 @@ async function loadOrders() {
             <p>
               <span>Grand Total</span>
               <strong>${grandTotal !== null ? safe(money(grandTotal)) : "—"}</strong>
+            </p>
+          </div>
+
+          <div class="payment-box">
+            <h4>Payment Verification</h4>
+            <p><strong>Method:</strong> ${safe(method)}</p>
+            <p><strong>Sender Number:</strong> ${safe(order.senderPhone || "Not provided")}</p>
+            <p><strong>Transaction ID:</strong> ${safe(order.transactionId || "Not provided")}</p>
+
+            <label for="payment-${safe(order.id)}">Payment Status</label>
+            <select id="payment-${safe(order.id)}">
+              ${paymentStatuses.map(value => `
+                <option value="${value}" ${value === paymentStatus ? "selected" : ""}>
+                  ${
+                    value === "unverified" ? "Awaiting Verification" :
+                    value.charAt(0).toUpperCase() + value.slice(1)
+                  }
+                </option>
+              `).join("")}
+            </select>
+
+            <p class="help-text">
+              Verify the transaction directly in the receiving payment account
+              before selecting Paid.
             </p>
           </div>
 
@@ -719,7 +828,7 @@ async function loadOrders() {
             type="button"
             class="save-order"
             data-save-order="${safe(order.id)}">
-            Save Order Details
+            Save Order & Payment Status
           </button>
         </article>
       `;
@@ -733,14 +842,20 @@ onAuthStateChanged(auth, user => {
   if (user && user.uid === ADMIN_UID) {
     showDashboard();
   } else {
-    if (user) signOut(auth);
     dashboard.dataset.ready = "";
     showLogin();
+
+    if (user) {
+      signOut(auth).catch(error => {
+        console.error("Could not sign out unauthorized user:", error);
+      });
+    }
   }
 });
 
 loginForm.addEventListener("submit", async event => {
   event.preventDefault();
+
   loginButton.disabled = true;
   message.textContent = "Signing in...";
 

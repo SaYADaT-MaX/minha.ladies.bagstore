@@ -7,22 +7,18 @@
   <meta name="robots" content="noindex, nofollow">
   <title>Checkout | Minha Ladies Bag</title>
   <link rel="stylesheet" href="./style.css">
-
   <style>
     * { box-sizing: border-box; }
-
     body {
       margin: 0;
       background: #faf7f2;
       color: #302821;
       font-family: Arial, sans-serif;
     }
-
     .checkout-wrap {
       width: min(100% - 28px, 720px);
       margin: 30px auto;
     }
-
     .checkout-card {
       background: #fff;
       padding: 22px;
@@ -30,17 +26,14 @@
       border: 1px solid #eadfd5;
       border-radius: 16px;
     }
-
     h1, h2 { margin-top: 0; }
     h1 { font-size: 27px; }
     h2 { font-size: 20px; }
-
     label {
       display: block;
       margin: 15px 0 7px;
       font-weight: 600;
     }
-
     input, textarea {
       width: 100%;
       padding: 12px;
@@ -49,9 +42,7 @@
       font: inherit;
       background: #fff;
     }
-
     textarea { min-height: 90px; resize: vertical; }
-
     button, .checkout-link {
       display: block;
       width: 100%;
@@ -67,12 +58,7 @@
       text-decoration: none;
       cursor: pointer;
     }
-
-    button:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-    }
-
+    button:disabled { opacity: .6; cursor: not-allowed; }
     .summary-row {
       display: flex;
       justify-content: space-between;
@@ -80,15 +66,9 @@
       padding: 10px 0;
       border-bottom: 1px solid #eee5dc;
     }
-
     .summary-row span { overflow-wrap: anywhere; }
     .summary-row strong { text-align: right; }
-
-    .grand-total {
-      font-size: 18px;
-      font-weight: bold;
-    }
-
+    .grand-total { font-size: 18px; font-weight: bold; }
     .notice {
       padding: 14px;
       border-radius: 10px;
@@ -97,13 +77,7 @@
       line-height: 1.7;
       margin: 15px 0;
     }
-
-    .muted {
-      color: #776d64;
-      font-size: 14px;
-      line-height: 1.7;
-    }
-
+    .muted { color: #776d64; font-size: 14px; line-height: 1.7; }
     #message {
       padding: 13px;
       border-radius: 8px;
@@ -112,18 +86,15 @@
       line-height: 1.6;
       margin-bottom: 16px;
     }
-
     .hidden { display: none !important; }
     .success { background: #e9f7ec; color: #185c2a; }
     .error { background: #fff0ed; color: #8b2419; }
-
     @media (max-width: 420px) {
       .checkout-card { padding: 16px; }
       h1 { font-size: 23px; }
     }
   </style>
 </head>
-
 <body>
   <main class="checkout-wrap">
     <h1>Checkout</h1>
@@ -132,35 +103,29 @@
       and delivery charge before you make any online payment.
     </p>
 
-    <div id="message" role="status" aria-live="polite"
-         class="hidden"></div>
+    <div id="message" role="status" aria-live="polite" class="hidden"></div>
 
     <section class="checkout-card">
       <h2>Order Summary</h2>
       <div id="cartItems">Loading cart...</div>
-
       <div class="summary-row">
         <span>Product Subtotal</span>
         <strong id="subtotal">৳0</strong>
       </div>
-
       <div class="summary-row">
         <span>Delivery Fee</span>
         <strong>To be confirmed</strong>
       </div>
-
       <div class="summary-row grand-total">
         <span>Final Total</span>
         <strong>After order confirmation</strong>
       </div>
-
       <div class="notice">
         <strong>Payment Notice</strong>
         <p>
-          You do not need to pay now. After reviewing your order,
-          the seller will confirm it and set the delivery charge.
-          You can then view your final bill and payment instructions
-          on the My Orders page.
+          You do not need to pay now. The seller will review your order
+          and set the delivery charge. Check My Orders for confirmation
+          and payment instructions.
         </p>
       </div>
     </section>
@@ -168,32 +133,27 @@
     <form id="checkoutForm">
       <section class="checkout-card">
         <h2>Customer Details</h2>
-
         <label for="customerName">Full Name *</label>
         <input id="customerName" name="customerName"
-               maxlength="100" required autocomplete="name">
+          maxlength="100" required autocomplete="name">
 
         <label for="phone">Phone Number *</label>
         <input id="phone" name="phone" type="tel"
-               maxlength="25" required autocomplete="tel"
-               placeholder="01XXXXXXXXX">
+          maxlength="25" required autocomplete="tel"
+          placeholder="01XXXXXXXXX">
 
         <label for="address">Full Delivery Address *</label>
-        <textarea id="address" name="address"
-                  maxlength="500" required
-                  autocomplete="street-address"
-                  placeholder="House, area, upazila, district"></textarea>
+        <textarea id="address" name="address" maxlength="500"
+          required autocomplete="street-address"
+          placeholder="House, area, upazila, district"></textarea>
       </section>
 
       <section class="checkout-card">
         <h2>Payment</h2>
-        <p>
-          <strong>No advance payment is required at checkout.</strong>
-        </p>
+        <p><strong>No advance payment is required at checkout.</strong></p>
         <p class="muted">
-          Once your order is confirmed and the delivery fee is set,
-          the My Orders page will show the next payment steps.
-          Cash on Delivery may be handled according to the seller's
+          After confirmation, My Orders will show the final bill and
+          available payment steps. Cash on Delivery is subject to seller
           confirmation.
         </p>
       </section>
@@ -203,13 +163,9 @@
       </button>
     </form>
 
-    <a class="checkout-link" href="./my-orders.html">
-      View My Orders
-    </a>
-
+    <a class="checkout-link" href="./my-orders.html">View My Orders</a>
     <p class="muted">
-      Need help? Contact the seller using the contact details on
-      the website. Never share your payment PIN or OTP.
+      Never share your payment PIN or OTP.
     </p>
   </main>
 
@@ -237,16 +193,14 @@
     const messageBox = document.getElementById("message");
 
     let cart = [];
-    let cartSubtotal = 0;
+    let cartValid = false;
     let authReady = false;
     let submitting = false;
-    let cartValid = true;
 
     function money(value) {
       const amount = Number(value);
-      return "৳" + (
-        Number.isFinite(amount) ? amount : 0
-      ).toLocaleString("en-BD");
+      return "৳" + (Number.isFinite(amount) ? amount : 0)
+        .toLocaleString("en-BD");
     }
 
     function showMessage(text, type = "error") {
@@ -258,27 +212,25 @@
 
     function readCart() {
       try {
-        const saved = JSON.parse(
-          localStorage.getItem(CART_KEY) || "[]"
-        );
-        return Array.isArray(saved) ? saved : [];
+        const value = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+        return Array.isArray(value) ? value : [];
       } catch {
         return [];
       }
     }
 
-    function getProductId(item) {
+    function productIdOf(item) {
       return item?.productId || item?.id || item?.productID || "";
     }
 
-    function getQuantity(item) {
+    function quantityOf(item) {
       return Number(item?.quantity ?? item?.qty ?? 1);
     }
 
     function renderCart() {
       cart = readCart();
-      cartSubtotal = 0;
       cartValid = cart.length > 0;
+      let subtotal = 0;
       cartItemsBox.replaceChildren();
 
       if (!cart.length) {
@@ -290,100 +242,103 @@
       }
 
       for (const item of cart) {
-        const name = String(item?.name || item?.productName || "Product");
-        const quantity = getQuantity(item);
-        const price = Number(item?.price ?? item?.unitPrice ?? 0);
+        const productId = productIdOf(item);
+        const quantity = quantityOf(item);
 
+        if (!productId || !Number.isInteger(quantity) || quantity < 1) {
+          cartValid = false;
+          const error = document.createElement("p");
+          error.textContent = "Invalid cart item. Please update your cart.";
+          cartItemsBox.appendChild(error);
+          continue;
+        }
+
+        const row = document.createElement("div");
+        row.className = "summary-row";
+
+        const name = document.createElement("span");
+        name.textContent =
+          `${String(item?.name || item?.productName || "Product")} × ${quantity}`;
+
+        const price = document.createElement("strong");
+        const displayPrice = Number(item?.price ?? item?.unitPrice ?? 0);
+        price.textContent = money(
+          Number.isFinite(displayPrice) && displayPrice >= 0
+            ? displayPrice * quantity : 0
+        );
+
+        row.append(name, price);
+        cartItemsBox.appendChild(row);
+      }
+
+      // This displayed subtotal is provisional. Firestore prices are
+      // checked again before the order is written.
+      for (const item of cart) {
+        const price = Number(item?.price ?? item?.unitPrice ?? 0);
+        const quantity = quantityOf(item);
         if (
-          !getProductId(item) ||
+          !productIdOf(item) ||
           !Number.isInteger(quantity) ||
           quantity < 1 ||
           !Number.isFinite(price) ||
           price < 0
         ) {
           cartValid = false;
-          const error = document.createElement("p");
-          error.textContent =
-            "A cart item is invalid. Please return to your cart and update it.";
-          cartItemsBox.appendChild(error);
-          continue;
+        } else {
+          subtotal += price * quantity;
         }
-
-        const lineTotal = price * quantity;
-        cartSubtotal += lineTotal;
-
-        const row = document.createElement("div");
-        row.className = "summary-row";
-
-        const nameBox = document.createElement("span");
-        nameBox.textContent = `${name} × ${quantity}`;
-
-        const priceBox = document.createElement("strong");
-        priceBox.textContent = money(lineTotal);
-
-        row.append(nameBox, priceBox);
-        cartItemsBox.appendChild(row);
       }
 
-      subtotalBox.textContent = money(cartSubtotal);
-
+      subtotalBox.textContent = money(subtotal);
       placeButton.disabled = !authReady || !cartValid || submitting;
       placeButton.textContent = submitting
         ? "Placing Order..."
-        : authReady
-          ? "Place Order — Pay Later"
-          : "Connecting...";
+        : authReady ? "Place Order — Pay Later" : "Connecting...";
     }
 
     async function ensureUser() {
       if (!auth.currentUser) {
         await signInAnonymously(auth);
       }
-
       if (!auth.currentUser) {
         throw new Error("Could not connect to your browser account.");
       }
-
       authReady = true;
       renderCart();
     }
+
+    renderCart();
 
     ensureUser().catch(error => {
       console.error("Checkout authentication error:", error);
       authReady = false;
       placeButton.disabled = true;
-
       showMessage(
         "Could not initialize checkout. " +
         (error.message || "Please refresh and try again.")
       );
     });
 
-    renderCart();
-
     form.addEventListener("submit", async event => {
       event.preventDefault();
-
       if (submitting) return;
 
       const user = auth.currentUser;
-
       if (!user) {
         showMessage("Please wait for checkout to finish loading.");
         return;
       }
 
-      if (!cartValid || !cart.length) {
+      cart = readCart();
+      if (!cart.length || !cartValid) {
+        renderCart();
         showMessage("Your cart is empty or contains an invalid item.");
         return;
       }
 
-      const customerName =
-        document.getElementById("customerName").value.trim();
-      const phone =
-        document.getElementById("phone").value.trim();
-      const address =
-        document.getElementById("address").value.trim();
+      const customerName = document.getElementById("customerName").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const address = document.getElementById("address").value.trim();
 
       if (!customerName || !phone || !address) {
         showMessage("Please complete all required customer details.");
@@ -391,38 +346,30 @@
       }
 
       submitting = true;
-      placeButton.disabled = true;
-      placeButton.textContent = "Checking Products...";
+      renderCart();
 
       try {
         let verifiedSubtotal = 0;
         const verifiedItems = [];
 
-        // Read current product prices and stock from Firestore.
         for (const item of cart) {
-          const productId = getProductId(item);
-          const quantity = getQuantity(item);
+          const productId = productIdOf(item);
+          const quantity = quantityOf(item);
 
           if (!productId || !Number.isInteger(quantity) || quantity < 1) {
             throw new Error("A cart item is invalid. Please update your cart.");
           }
 
-          const productSnapshot = await getDoc(
-            doc(db, "products", productId)
-          );
+          const snapshot = await getDoc(doc(db, "products", productId));
 
-          if (!productSnapshot.exists()) {
-            throw new Error(
-              "A product is no longer available. Please update your cart."
-            );
+          if (!snapshot.exists()) {
+            throw new Error("A product is no longer available. Update your cart.");
           }
 
-          const product = productSnapshot.data();
+          const product = snapshot.data();
 
           if (product.active !== true) {
-            throw new Error(
-              `${product.name || "A product"} is currently unavailable.`
-            );
+            throw new Error(`${product.name || "A product"} is unavailable.`);
           }
 
           const price = Number(product.price);
@@ -450,9 +397,6 @@
           });
         }
 
-        // Keep the initial document compatible with the existing
-        // basic order fields. Admin/payment fields are added in the
-        // coordinated Admin Panel and Firestore Rules update.
         const orderData = {
           ownerUid: user.uid,
           customerName,
@@ -462,28 +406,25 @@
           total: verifiedSubtotal,
           deliveryFee: 0,
           status: "pending",
+          paymentMethod: "pending",
+          paymentStatus: "unpaid",
           createdAt: serverTimestamp()
         };
 
         placeButton.textContent = "Saving Order...";
 
-        const orderRef = await addDoc(
-          collection(db, "orders"),
-          orderData
-        );
+        const orderRef = await addDoc(collection(db, "orders"), orderData);
 
-        // Clear cart only after Firestore confirms the order was saved.
         localStorage.removeItem(CART_KEY);
         cart = [];
-        renderCart();
         form.reset();
+        renderCart();
 
         showMessage(
           "Order submitted successfully!\n" +
           "Order ID: " + orderRef.id + "\n\n" +
-          "Payment is not required now. The seller will review your " +
-          "order and set the delivery fee. Check My Orders for the " +
-          "confirmation and final bill.",
+          "No payment is required now. The seller will review your order. " +
+          "Check My Orders for confirmation and the final bill.",
           "success"
         );
 
@@ -492,22 +433,14 @@
 
       } catch (error) {
         console.error("Order submission error:", error);
-
         showMessage(
-          "Order failed: " +
-          (error.message || "Please try again.") +
+          "Order failed: " + (error.message || "Please try again.") +
           (error.code ? "\nError code: " + error.code : "")
         );
-
-        placeButton.disabled = false;
-        placeButton.textContent = "Place Order — Pay Later";
-
+        renderCart();
       } finally {
         submitting = false;
-
-        if (cart.length) {
-          placeButton.disabled = !authReady || !cartValid;
-        }
+        if (cart.length) renderCart();
       }
     });
   </script>

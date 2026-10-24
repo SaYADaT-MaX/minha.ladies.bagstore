@@ -43,6 +43,7 @@ function safe(value) {
 
 function money(value) {
   const amount = Number(value);
+
   return Number.isFinite(amount)
     ? "৳" + amount.toLocaleString("en-BD")
     : "—";
@@ -50,8 +51,12 @@ function money(value) {
 
 function showMessage(text) {
   const box = document.getElementById("panelMessage");
-  if (box) box.textContent = text;
-  else if (message) message.textContent = text;
+
+  if (box) {
+    box.textContent = text;
+  } else if (message) {
+    message.textContent = text;
+  }
 }
 
 function showLogin() {
@@ -61,8 +66,13 @@ function showLogin() {
 
 function getOrderItems(items) {
   if (Array.isArray(items)) return items;
-  if (items && typeof items === "object") return Object.values(items);
+
+  if (items && typeof items === "object") {
+    return Object.values(items);
+  }
+
   if (items) return [{ name: String(items) }];
+
   return [];
 }
 
@@ -70,14 +80,18 @@ function renderOrderItems(items) {
   const normalized = getOrderItems(items);
 
   if (!normalized.length) {
-    return `<p>No item details available.</p>`;
+    return "<p>No item details available.</p>";
   }
 
   return `
     <div class="order-items-list">
       ${normalized.map((item, index) => {
         if (!item || typeof item !== "object") {
-          return `<div class="order-item">${safe(item ?? "Product")}</div>`;
+          return `
+            <div class="order-item">
+              ${safe(item ?? "Product")}
+            </div>
+          `;
         }
 
         const name =
@@ -90,6 +104,7 @@ function renderOrderItems(items) {
         const quantity = Number(item.quantity ?? item.qty ?? 1);
         const price = Number(item.price ?? item.unitPrice);
         const explicitTotal = item.subtotal ?? item.lineTotal;
+
         const calculatedTotal =
           Number.isFinite(price) && Number.isFinite(quantity)
             ? price * quantity
@@ -122,6 +137,7 @@ function showDashboard() {
   dashboard.classList.remove("hidden");
 
   if (dashboard.dataset.ready === "yes") return;
+
   dashboard.dataset.ready = "yes";
 
   dashboard.innerHTML = `
@@ -165,6 +181,12 @@ function showDashboard() {
       #dashboard button {
         max-width: 100%;
         overflow-wrap: anywhere;
+        cursor: pointer;
+      }
+
+      #dashboard button:disabled {
+        opacity: 0.65;
+        cursor: wait;
       }
 
       #dashboard .admin-top {
@@ -241,7 +263,6 @@ function showDashboard() {
         background: #8b315c;
         color: #fff;
         font-weight: 700;
-        cursor: pointer;
       }
 
       #dashboard .admin-divider {
@@ -288,23 +309,39 @@ function showDashboard() {
 
     <section class="admin-section">
       <h3>Payment Settings</h3>
+
       <p class="help-text">
-        Enter the receiving numbers that customers should use at checkout.
+        Enter the receiving numbers customers should use at checkout.
         Only enter numbers owned or authorized by the seller.
       </p>
 
       <form id="paymentSettingsForm">
         <label for="bkashNumber">bKash Number</label>
-        <input id="bkashNumber" type="tel" maxlength="25"
-               placeholder="Enter bKash number">
+        <input
+          id="bkashNumber"
+          type="tel"
+          maxlength="25"
+          autocomplete="off"
+          placeholder="Enter bKash number"
+        >
 
         <label for="nagadNumber">Nagad Number</label>
-        <input id="nagadNumber" type="tel" maxlength="25"
-               placeholder="Enter Nagad number">
+        <input
+          id="nagadNumber"
+          type="tel"
+          maxlength="25"
+          autocomplete="off"
+          placeholder="Enter Nagad number"
+        >
 
         <label for="rocketNumber">Rocket Number</label>
-        <input id="rocketNumber" type="tel" maxlength="25"
-               placeholder="Enter Rocket number">
+        <input
+          id="rocketNumber"
+          type="tel"
+          maxlength="25"
+          autocomplete="off"
+          placeholder="Enter Rocket number"
+        >
 
         <button id="savePaymentSettings" type="submit">
           Save Payment Numbers
@@ -328,8 +365,12 @@ function showDashboard() {
         <input id="pStock" type="number" min="0" step="1" required>
 
         <label for="pImage">Image URL *</label>
-        <input id="pImage" type="url" required
-               placeholder="https://example.com/bag.jpg">
+        <input
+          id="pImage"
+          type="url"
+          required
+          placeholder="https://example.com/bag.jpg"
+        >
 
         <label for="pCategory">Category</label>
         <input id="pCategory" placeholder="Handbags">
@@ -359,37 +400,49 @@ function showDashboard() {
 
     <section class="admin-section">
       <h3>Customer Orders & Payment Verification</h3>
+
       <p class="help-text">
         Verify online payments using the seller's own payment account before
-        changing a payment status to Paid. Never mark a payment as Paid based
-        on a transaction ID alone.
+        changing a payment status to Paid. Never mark a payment as Paid
+        based on a transaction ID alone.
       </p>
+
       <button id="refreshOrders" type="button">Refresh Orders</button>
       <div id="ordersList">Loading orders...</div>
     </section>
   `;
 
   document.getElementById("logoutButton").addEventListener("click", async () => {
-    await signOut(auth);
-    dashboard.dataset.ready = "";
-    passwordInput.value = "";
-    showLogin();
+    try {
+      await signOut(auth);
+    } catch (error) {
+      showMessage("Logout failed: " + error.message);
+    }
   });
 
   document.getElementById("paymentSettingsForm")
     .addEventListener("submit", savePaymentSettings);
 
-  document.getElementById("productForm").addEventListener("submit", saveProduct);
-  document.getElementById("cancelEdit").addEventListener("click", resetForm);
-  document.getElementById("refreshProducts").addEventListener("click", loadProducts);
-  document.getElementById("refreshOrders").addEventListener("click", loadOrders);
+  document.getElementById("productForm")
+    .addEventListener("submit", saveProduct);
+
+  document.getElementById("cancelEdit")
+    .addEventListener("click", resetForm);
+
+  document.getElementById("refreshProducts")
+    .addEventListener("click", loadProducts);
+
+  document.getElementById("refreshOrders")
+    .addEventListener("click", loadOrders);
 
   document.getElementById("productsList").addEventListener("click", async event => {
     const button = event.target.closest("button[data-action]");
+
     if (!button) return;
 
     const id = button.dataset.id;
     const product = productsCache.find(item => item.id === id);
+
     if (!product) return;
 
     if (button.dataset.action === "edit") {
@@ -410,7 +463,11 @@ function showDashboard() {
     }
 
     if (button.dataset.action === "delete") {
-      if (!confirm(`Delete "${product.name}"? This cannot be undone.`)) return;
+      if (!confirm(`Delete "${product.name}"? This cannot be undone.`)) {
+        return;
+      }
+
+      button.disabled = true;
 
       try {
         await deleteDoc(doc(db, "products", id));
@@ -418,15 +475,17 @@ function showDashboard() {
         await loadProducts();
       } catch (error) {
         showMessage("Delete failed: " + error.message);
+      } finally {
+        button.disabled = false;
       }
     }
   });
 
   document.getElementById("ordersList").addEventListener("click", async event => {
     const button = event.target.closest("button[data-save-order]");
+
     if (!button) return;
 
-    // Do not allow a non-admin session to make changes.
     if (!auth.currentUser || auth.currentUser.uid !== ADMIN_UID) {
       showMessage("Unauthorized. Please log in as the admin.");
       return;
@@ -439,9 +498,14 @@ function showDashboard() {
     const statusInput = document.getElementById("status-" + id);
     const paymentStatusInput = document.getElementById("payment-" + id);
 
-    if (!feeInput || !courierInput || !trackingInput ||
-        !statusInput || !paymentStatusInput) {
-      showMessage("Could not find the order fields. Refresh orders and try again.");
+    if (
+      !feeInput ||
+      !courierInput ||
+      !trackingInput ||
+      !statusInput ||
+      !paymentStatusInput
+    ) {
+      showMessage("Order fields not found. Refresh orders and try again.");
       return;
     }
 
@@ -452,12 +516,19 @@ function showDashboard() {
     const paymentStatus = paymentStatusInput.value;
 
     const allowedOrderStatuses = [
-      "pending", "confirmed", "processing", "shipped",
-      "delivered", "cancelled"
+      "pending",
+      "confirmed",
+      "processing",
+      "shipped",
+      "delivered",
+      "cancelled"
     ];
 
     const allowedPaymentStatuses = [
-      "unverified", "unpaid", "paid", "rejected"
+      "unverified",
+      "unpaid",
+      "paid",
+      "rejected"
     ];
 
     if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
@@ -465,13 +536,16 @@ function showDashboard() {
       return;
     }
 
-    if (!allowedOrderStatuses.includes(status) ||
-        !allowedPaymentStatuses.includes(paymentStatus)) {
+    if (
+      !allowedOrderStatuses.includes(status) ||
+      !allowedPaymentStatuses.includes(paymentStatus)
+    ) {
       showMessage("Invalid order or payment status.");
       return;
     }
 
     button.disabled = true;
+    button.textContent = "Saving Order...";
 
     try {
       const orderRef = doc(db, "orders", id);
@@ -481,11 +555,6 @@ function showDashboard() {
         throw new Error("This order no longer exists.");
       }
 
-      const orderData = latestOrder.data();
-
-      // A customer must not be able to set paymentStatus to Paid
-      // through the customer-facing website. Security Rules must also
-      // enforce that only the authorized admin can do this.
       await updateDoc(orderRef, {
         deliveryFee,
         courierName,
@@ -497,15 +566,18 @@ function showDashboard() {
 
       showMessage(
         paymentStatus === "paid"
-          ? "Order saved. Make sure the payment was verified in the seller's account."
-          : "Order and payment details saved."
+          ? "Order saved. Ensure payment was verified in the seller's account."
+          : "Order and payment details saved successfully."
       );
 
       await loadOrders();
     } catch (error) {
+      console.error("Order update error:", error);
       showMessage("Order update failed: " + error.message);
+      alert("Order update failed:\n" + error.message);
     } finally {
       button.disabled = false;
+      button.textContent = "Save Order & Payment Status";
     }
   });
 
@@ -516,6 +588,7 @@ function showDashboard() {
 
 async function loadPaymentSettings() {
   const form = document.getElementById("paymentSettingsForm");
+
   if (!form) return;
 
   try {
@@ -530,7 +603,14 @@ async function loadPaymentSettings() {
 
     document.getElementById("rocketNumber").value =
       settings.rocketNumber || "";
+
+    showMessage(
+      snapshot.exists()
+        ? "Payment settings loaded."
+        : "No payment numbers saved yet. Enter numbers and save."
+    );
   } catch (error) {
+    console.error("Load payment settings error:", error);
     showMessage("Could not load payment settings: " + error.message);
   }
 }
@@ -541,37 +621,131 @@ async function savePaymentSettings(event) {
   if (savingSettings) return;
 
   if (!auth.currentUser || auth.currentUser.uid !== ADMIN_UID) {
-    showMessage("Unauthorized. Please log in as the admin.");
+    const errorText = "Unauthorized. Please log in as the admin.";
+    showMessage(errorText);
+    alert(errorText);
     return;
   }
 
-  const bkashNumber = document.getElementById("bkashNumber").value.trim();
-  const nagadNumber = document.getElementById("nagadNumber").value.trim();
-  const rocketNumber = document.getElementById("rocketNumber").value.trim();
+  const bkashNumber =
+    document.getElementById("bkashNumber").value.trim();
+
+  const nagadNumber =
+    document.getElementById("nagadNumber").value.trim();
+
+  const rocketNumber =
+    document.getElementById("rocketNumber").value.trim();
+
+  if (!bkashNumber && !nagadNumber && !rocketNumber) {
+    const confirmed = confirm(
+      "All three payment numbers are empty. Do you want to save empty settings?"
+    );
+
+    if (!confirmed) return;
+  }
 
   const saveButton = document.getElementById("savePaymentSettings");
+
   savingSettings = true;
   saveButton.disabled = true;
+  saveButton.textContent = "Saving Payment Numbers...";
+
+  showMessage("Saving payment numbers to Firebase...");
 
   try {
-    await setDoc(doc(db, "settings", "payment"), {
-      bkashNumber,
-      nagadNumber,
-      rocketNumber,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    await setDoc(
+      doc(db, "settings", "payment"),
+      {
+        bkashNumber,
+        nagadNumber,
+        rocketNumber,
+        updatedAt: serverTimestamp()
+      },
+      { merge: true }
+    );
 
-    showMessage("Payment numbers saved successfully.");
+    // setDoc completed successfully. Now check whether the values
+    // can also be read back from Firestore.
+    showMessage("Save request succeeded. Verifying saved values...");
+
+    try {
+      const check = await getDoc(doc(db, "settings", "payment"));
+
+      if (!check.exists()) {
+        showMessage(
+          "Save request succeeded, but verification could not find the settings document. Check Firestore."
+        );
+
+        alert(
+          "The write request succeeded, but the settings document could not be verified. Check Firebase."
+        );
+
+        return;
+      }
+
+      const saved = check.data();
+
+      const matches =
+        (saved.bkashNumber || "") === bkashNumber &&
+        (saved.nagadNumber || "") === nagadNumber &&
+        (saved.rocketNumber || "") === rocketNumber;
+
+      if (!matches) {
+        showMessage(
+          "Settings document was read, but its values do not match. Check Firestore."
+        );
+
+        alert(
+          "The saved values do not match the entered numbers. Please check Firebase."
+        );
+
+        return;
+      }
+
+      showMessage("Payment numbers saved and verified successfully.");
+
+      alert(
+        "Success! Payment numbers saved to Firebase. Refresh the Admin Panel to check persistence."
+      );
+    } catch (verifyError) {
+      console.error("Payment settings verification error:", verifyError);
+
+      showMessage(
+        "Save request succeeded, but read-back verification failed: " +
+        verifyError.message
+      );
+
+      alert(
+        "The write request succeeded, but Firebase could not verify the saved values.\n\n" +
+        verifyError.message +
+        "\n\nCheck Firestore Rules before assuming the settings are fully working."
+      );
+    }
   } catch (error) {
+    console.error("Payment settings save error:", error);
+
     showMessage("Could not save payment numbers: " + error.message);
+
+    alert(
+      "Could not save payment numbers.\n\n" +
+      error.message +
+      "\n\nIf this says Missing or insufficient permissions, Firestore Rules need to be checked."
+    );
   } finally {
     savingSettings = false;
-    saveButton.disabled = false;
+
+    const currentButton = document.getElementById("savePaymentSettings");
+
+    if (currentButton) {
+      currentButton.disabled = false;
+      currentButton.textContent = "Save Payment Numbers";
+    }
   }
 }
 
 function resetForm() {
   editingId = null;
+
   document.getElementById("productForm").reset();
   document.getElementById("pActive").checked = true;
   document.getElementById("formHeading").textContent = "Add New Product";
@@ -592,8 +766,14 @@ async function saveProduct(event) {
   const stock = Number(document.getElementById("pStock").value);
   const imageUrl = document.getElementById("pImage").value.trim();
 
-  if (!name || !imageUrl || !Number.isFinite(price) ||
-      !Number.isFinite(stock) || price < 0 || stock < 0) {
+  if (
+    !name ||
+    !imageUrl ||
+    !Number.isFinite(price) ||
+    !Number.isFinite(stock) ||
+    price < 0 ||
+    stock < 0
+  ) {
     showMessage("Please check product name, image URL, price and stock.");
     return;
   }
@@ -614,7 +794,9 @@ async function saveProduct(event) {
   };
 
   const saveButton = document.getElementById("saveProduct");
+
   saveButton.disabled = true;
+  saveButton.textContent = editingId ? "Updating..." : "Saving...";
 
   try {
     if (editingId) {
@@ -627,20 +809,25 @@ async function saveProduct(event) {
         discountPrice: 0,
         createdAt: serverTimestamp()
       });
+
       showMessage("Product added successfully.");
     }
 
     resetForm();
     await loadProducts();
   } catch (error) {
-    showMessage("Save failed: " + error.message);
+    console.error("Product save error:", error);
+    showMessage("Product save failed: " + error.message);
+    alert("Product save failed:\n" + error.message);
   } finally {
     saveButton.disabled = false;
+    saveButton.textContent = editingId ? "Update Product" : "Save Product";
   }
 }
 
 async function loadProducts() {
   const list = document.getElementById("productsList");
+
   if (!list) return;
 
   list.textContent = "Loading products...";
@@ -661,24 +848,40 @@ async function loadProducts() {
     list.innerHTML = productsCache.map(product => `
       <article class="admin-card">
         <strong>${safe(product.name)}</strong>
-        <p>Price: ${safe(money(product.price))} | Stock: ${safe(product.stock)}</p>
+
+        <p>
+          Price: ${safe(money(product.price))} |
+          Stock: ${safe(product.stock)}
+        </p>
+
         <p>Category: ${safe(product.category || "-")}</p>
+
         <p>Status: ${product.active === true ? "Visible" : "Hidden"}</p>
-        <button type="button" data-action="edit" data-id="${safe(product.id)}">
+
+        <button
+          type="button"
+          data-action="edit"
+          data-id="${safe(product.id)}">
           Edit
         </button>
-        <button type="button" data-action="delete" data-id="${safe(product.id)}">
+
+        <button
+          type="button"
+          data-action="delete"
+          data-id="${safe(product.id)}">
           Delete
         </button>
       </article>
     `).join("");
   } catch (error) {
+    console.error("Load products error:", error);
     list.textContent = "Could not load products: " + error.message;
   }
 }
 
 async function loadOrders() {
   const list = document.getElementById("ordersList");
+
   if (!list) return;
 
   list.textContent = "Loading orders...";
@@ -702,12 +905,19 @@ async function loadOrders() {
     );
 
     const statuses = [
-      "pending", "confirmed", "processing",
-      "shipped", "delivered", "cancelled"
+      "pending",
+      "confirmed",
+      "processing",
+      "shipped",
+      "delivered",
+      "cancelled"
     ];
 
     const paymentStatuses = [
-      "unverified", "unpaid", "paid", "rejected"
+      "unverified",
+      "unpaid",
+      "paid",
+      "rejected"
     ];
 
     list.innerHTML = orders.map(order => {
@@ -722,10 +932,10 @@ async function loadOrders() {
       const subtotal = Number(order.total);
       const deliveryFee = Number(order.deliveryFee ?? 0);
 
-      const grandTotal = Number.isFinite(subtotal) &&
-                         Number.isFinite(deliveryFee)
-        ? subtotal + deliveryFee
-        : null;
+      const grandTotal =
+        Number.isFinite(subtotal) && Number.isFinite(deliveryFee)
+          ? subtotal + deliveryFee
+          : null;
 
       const paymentLabels = {
         cod: "Cash on Delivery",
@@ -734,9 +944,10 @@ async function loadOrders() {
         rocket: "Rocket"
       };
 
-      const method = paymentLabels[order.paymentMethod] ||
-                     order.paymentMethod ||
-                     "Not specified";
+      const method =
+        paymentLabels[order.paymentMethod] ||
+        order.paymentMethod ||
+        "Not specified";
 
       return `
         <article class="admin-card">
@@ -759,29 +970,46 @@ async function loadOrders() {
               <span>Subtotal</span>
               <strong>${safe(money(order.total))}</strong>
             </p>
+
             <p>
               <span>Delivery Fee</span>
               <strong>${safe(money(order.deliveryFee ?? 0))}</strong>
             </p>
+
             <p>
               <span>Grand Total</span>
-              <strong>${grandTotal !== null ? safe(money(grandTotal)) : "—"}</strong>
+              <strong>
+                ${grandTotal !== null ? safe(money(grandTotal)) : "—"}
+              </strong>
             </p>
           </div>
 
           <div class="payment-box">
             <h4>Payment Verification</h4>
+
             <p><strong>Method:</strong> ${safe(method)}</p>
-            <p><strong>Sender Number:</strong> ${safe(order.senderPhone || "Not provided")}</p>
-            <p><strong>Transaction ID:</strong> ${safe(order.transactionId || "Not provided")}</p>
+
+            <p>
+              <strong>Sender Number:</strong>
+              ${safe(order.senderPhone || "Not provided")}
+            </p>
+
+            <p>
+              <strong>Transaction ID:</strong>
+              ${safe(order.transactionId || "Not provided")}
+            </p>
 
             <label for="payment-${safe(order.id)}">Payment Status</label>
+
             <select id="payment-${safe(order.id)}">
               ${paymentStatuses.map(value => `
-                <option value="${value}" ${value === paymentStatus ? "selected" : ""}>
+                <option
+                  value="${value}"
+                  ${value === paymentStatus ? "selected" : ""}>
                   ${
-                    value === "unverified" ? "Awaiting Verification" :
-                    value.charAt(0).toUpperCase() + value.slice(1)
+                    value === "unverified"
+                      ? "Awaiting Verification"
+                      : value.charAt(0).toUpperCase() + value.slice(1)
                   }
                 </option>
               `).join("")}
@@ -794,31 +1022,40 @@ async function loadOrders() {
           </div>
 
           <label for="fee-${safe(order.id)}">Delivery Fee (৳)</label>
+
           <input
             id="fee-${safe(order.id)}"
             type="number"
             min="0"
             step="1"
-            value="${safe(order.deliveryFee ?? 0)}">
+            value="${safe(order.deliveryFee ?? 0)}"
+          >
 
           <label for="courier-${safe(order.id)}">Courier Name</label>
+
           <input
             id="courier-${safe(order.id)}"
             maxlength="100"
             value="${safe(order.courierName || "")}"
-            placeholder="e.g. Pathao Courier">
+            placeholder="e.g. Pathao Courier"
+          >
 
           <label for="tracking-${safe(order.id)}">Tracking Number</label>
+
           <input
             id="tracking-${safe(order.id)}"
             maxlength="100"
             value="${safe(order.trackingNumber || "")}"
-            placeholder="Tracking number (optional)">
+            placeholder="Tracking number (optional)"
+          >
 
           <label for="status-${safe(order.id)}">Order Status</label>
+
           <select id="status-${safe(order.id)}">
             ${statuses.map(value => `
-              <option value="${value}" ${value === status ? "selected" : ""}>
+              <option
+                value="${value}"
+                ${value === status ? "selected" : ""}>
                 ${value.charAt(0).toUpperCase() + value.slice(1)}
               </option>
             `).join("")}
@@ -834,6 +1071,7 @@ async function loadOrders() {
       `;
     }).join("");
   } catch (error) {
+    console.error("Load orders error:", error);
     list.textContent = "Could not load orders: " + error.message;
   }
 }
@@ -873,6 +1111,7 @@ loginForm.addEventListener("submit", async event => {
 
     showDashboard();
   } catch (error) {
+    console.error("Admin login error:", error);
     message.textContent = "Login failed: " + error.message;
   } finally {
     loginButton.disabled = false;

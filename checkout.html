@@ -2,304 +2,201 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#e94f83">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Checkout | Minha Ladies Bag</title>
-
+  <meta name="robots" content="noindex, nofollow">
   <link rel="stylesheet" href="./style.css">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
 
   <style>
-    .checkout-page {
-      max-width: 900px;
-      margin: auto;
-      padding: 35px 18px 60px;
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: #faf7f2;
+      color: #302821;
+      font-family: Arial, sans-serif;
     }
 
-    .checkout-layout {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
+    .checkout-wrap {
+      width: min(100% - 28px, 720px);
+      margin: 30px auto;
     }
 
-    .checkout-box {
-      padding: 22px;
-      border: 1px solid #eadfd9;
-      border-radius: 12px;
+    .checkout-card {
       background: #fff;
-      min-width: 0;
+      padding: 22px;
+      margin-bottom: 18px;
+      border: 1px solid #eadfd5;
+      border-radius: 16px;
     }
 
-    .checkout-box h2 {
-      font-family: "Playfair Display", serif;
-    }
+    h1, h2 { margin-top: 0; }
+    h1 { font-size: 27px; }
+    h2 { font-size: 20px; }
 
-    .checkout-form label {
+    label {
       display: block;
-      margin: 14px 0 6px;
+      margin: 15px 0 7px;
       font-weight: 600;
     }
 
-    .checkout-form input,
-    .checkout-form textarea {
+    input, textarea, select {
       width: 100%;
-      box-sizing: border-box;
       padding: 12px;
-      border: 1px solid #e4d8d0;
-      border-radius: 7px;
+      border: 1px solid #d9cfc5;
+      border-radius: 9px;
       font: inherit;
+      background: #fff;
     }
 
-    .checkout-form textarea {
-      min-height: 95px;
-      resize: vertical;
-    }
+    textarea { min-height: 90px; resize: vertical; }
 
-    .checkout-button {
+    button {
       width: 100%;
-      padding: 13px;
+      padding: 14px;
+      margin-top: 16px;
       border: 0;
-      border-radius: 7px;
-      background: #e94f83;
-      color: #fff;
-      font: inherit;
-      font-weight: 700;
-      margin-top: 18px;
+      border-radius: 9px;
+      background: #a65f50;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
       cursor: pointer;
     }
 
-    .checkout-button:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-    }
+    button:disabled { opacity: .6; cursor: wait; }
 
-    .order-line {
+    .summary-row {
       display: flex;
       justify-content: space-between;
       gap: 12px;
-      padding: 10px 0;
-      border-bottom: 1px solid #eadfd9;
+      padding: 9px 0;
+      border-bottom: 1px solid #eee5dc;
     }
 
-    .checkout-total {
-      font-size: 21px;
-      font-weight: 700;
-    }
+    .summary-row span { overflow-wrap: anywhere; }
+    .grand-total { font-size: 18px; font-weight: bold; }
 
-    #checkoutMessage {
-      margin-top: 12px;
-      overflow-wrap: anywhere;
-      white-space: pre-wrap;
-    }
-
-    .notice-box {
+    .payment-info {
+      margin-top: 14px;
       padding: 14px;
-      background: #fff5f8;
-      border-radius: 9px;
-      margin-top: 18px;
-      overflow-wrap: anywhere;
-    }
-
-    .success-box {
-      border: 1px solid #9ac9a6;
-      background: #f2fff5;
-      padding: 18px;
       border-radius: 10px;
-      margin: 20px 0;
+      background: #faf3ed;
+      line-height: 1.7;
       overflow-wrap: anywhere;
     }
 
-    .hidden {
-      display: none !important;
+    .muted { color: #776d64; font-size: 14px; }
+    .hidden { display: none !important; }
+
+    #message {
+      padding: 12px;
+      border-radius: 8px;
+      overflow-wrap: anywhere;
     }
 
-    .checkout-link {
-      display: inline-block;
-      margin: 10px 12px 0 0;
-      color: #a12e5b;
-      font-weight: 700;
-    }
+    .success { background: #e9f7ec; color: #185c2a; }
+    .error { background: #fff0ed; color: #8b2419; }
 
-    @media (max-width: 650px) {
-      .checkout-layout {
-        grid-template-columns: 1fr;
-      }
-
-      .checkout-page {
-        padding-top: 25px;
-      }
+    @media (max-width: 420px) {
+      .checkout-card { padding: 16px; }
+      h1 { font-size: 23px; }
     }
   </style>
 </head>
 
 <body>
-  <div class="announcement">
-    Discover your next favourite bag ✨
-  </div>
-
-  <header class="header">
-    <a href="./index.html" class="brand-logo">
-      <img
-        src="./IMG-20261021-WA0000.jpg"
-        alt="MINHA Ladies Bag Logo"
-        width="48"
-        height="48"
-      >
-      <span class="brand-name">
-        MINHA
-        <small>LADIES BAG</small>
-      </span>
-    </a>
-
-    <button
-      class="menu-toggle"
-      id="menuToggle"
-      type="button"
-      aria-label="Toggle navigation"
-      aria-expanded="false"
-    >☰</button>
-
-    <nav class="nav" id="mainNav">
-      <a href="./index.html">Home</a>
-      <a href="./products.html">Shop</a>
-      <a href="./about.html">Our Story</a>
-      <a href="./contact.html">Contact</a>
-      <a href="./faq.html">FAQs</a>
-      <a href="./my-orders.html">My Orders</a>
-    </nav>
-
-    <a href="./cart.html" class="cart-link">
-      Bag <span class="cart-count" id="cartCount">0</span>
-    </a>
-  </header>
-
-  <main class="checkout-page">
-    <span class="eyebrow">ALMOST YOURS</span>
+  <main class="checkout-wrap">
     <h1>Checkout</h1>
-    <p>Enter your delivery details to place your order.</p>
+    <p class="muted">Complete your details to place your order.</p>
 
-    <!-- Success message does not hide the checkout form -->
-    <section
-      id="confirmationBox"
-      class="success-box hidden"
-      aria-live="polite"
-    >
-      <h2>Thank you for your order!</h2>
-      <p>Your order has been submitted successfully.</p>
+    <div id="message" role="status" aria-live="polite" class="hidden"></div>
 
-      <p>
-        <strong>Order reference:</strong>
-        <span id="confirmationOrderId"></span>
+    <section class="checkout-card">
+      <h2>Order Summary</h2>
+      <div id="cartItems">Loading cart...</div>
+
+      <div class="summary-row">
+        <span>Subtotal</span>
+        <strong id="subtotal">৳0</strong>
+      </div>
+
+      <div class="summary-row">
+        <span>Delivery Fee</span>
+        <strong id="deliveryFee">To be confirmed</strong>
+      </div>
+
+      <div class="summary-row grand-total">
+        <span>Estimated Total</span>
+        <strong id="grandTotal">To be confirmed</strong>
+      </div>
+
+      <p class="muted">
+        The final delivery fee and total will be confirmed by the seller.
       </p>
-
-      <p>
-        <strong>Status:</strong>
-        <span id="confirmationStatus">pending</span>
-      </p>
-
-      <p>
-        Your order is saved. Visit My Orders to check its status.
-      </p>
-
-      <a class="checkout-link" href="./my-orders.html">
-        View My Orders
-      </a>
-
-      <a class="checkout-link" href="./products.html">
-        Continue Shopping
-      </a>
     </section>
 
-    <div class="checkout-layout" id="checkoutLayout">
-      <section class="checkout-box">
-        <h2>Delivery Details</h2>
+    <form id="checkoutForm">
+      <section class="checkout-card">
+        <h2>Customer Details</h2>
 
-        <form class="checkout-form" id="checkoutForm">
-          <label for="customerName">Full Name</label>
-          <input
-            id="customerName"
-            name="customerName"
-            autocomplete="name"
-            required
-            maxlength="100"
-          >
+        <label for="customerName">Full Name *</label>
+        <input id="customerName" maxlength="100" required autocomplete="name">
 
-          <label for="phone">Phone Number</label>
-          <input
-            id="phone"
-            name="phone"
-            type="tel"
-            autocomplete="tel"
-            required
-            maxlength="20"
-            pattern="[0-9+() -]{7,20}"
-            placeholder="01XXXXXXXXX"
-          >
+        <label for="phone">Phone Number *</label>
+        <input id="phone" type="tel" maxlength="25"
+               required autocomplete="tel" placeholder="01XXXXXXXXX">
 
-          <label for="address">Full Delivery Address</label>
-          <textarea
-            id="address"
-            name="address"
-            autocomplete="street-address"
-            required
-            maxlength="500"
-            placeholder="Village/Area, Upazila, District"
-          ></textarea>
-
-          <button
-            class="checkout-button"
-            id="placeOrderButton"
-            type="submit"
-            disabled
-          >
-            Place Order
-          </button>
-
-          <p id="checkoutMessage" role="status" aria-live="polite"></p>
-        </form>
+        <label for="address">Full Delivery Address *</label>
+        <textarea id="address" maxlength="500" required
+                  autocomplete="street-address"
+                  placeholder="House, area, upazila, district"></textarea>
       </section>
 
-      <section class="checkout-box">
-        <h2>Your Order</h2>
+      <section class="checkout-card">
+        <h2>Payment Method</h2>
 
-        <div id="orderItems">Loading cart...</div>
+        <label for="paymentMethod">Choose Payment Method *</label>
+        <select id="paymentMethod" required>
+          <option value="">Select a payment method</option>
+          <option value="cod">Cash on Delivery</option>
+          <option value="bkash">bKash</option>
+          <option value="nagad">Nagad</option>
+          <option value="rocket">Rocket</option>
+        </select>
 
-        <div class="order-line">
-          <span>Subtotal</span>
-          <strong id="subtotal">৳0</strong>
+        <div id="paymentInstructions" class="payment-info hidden"></div>
+
+        <div id="transactionFields" class="hidden">
+          <label for="senderPhone">Sender's Payment Number *</label>
+          <input id="senderPhone" type="tel" maxlength="25"
+                 placeholder="Number used to send payment">
+
+          <label for="transactionId">Transaction ID (TrxID) *</label>
+          <input id="transactionId" maxlength="100"
+                 placeholder="Enter the exact transaction ID">
+
+          <p class="muted">
+            Submit the transaction details only after sending payment.
+            The seller must verify the transaction before marking it as paid.
+            Never share your PIN or OTP.
+          </p>
         </div>
-
-        <div class="order-line">
-          <span>Delivery Fee</span>
-          <span id="deliveryFeeText">To be confirmed</span>
-        </div>
-
-        <p class="checkout-total" id="grandTotal">
-          Total: ৳0 + delivery
-        </p>
-
-        <p>Final delivery charge will be confirmed by the shop.</p>
       </section>
-    </div>
+
+      <button id="placeOrderButton" type="submit">Place Order</button>
+    </form>
+
+    <p class="muted">
+      Need help? Contact the seller using the contact details on the website.
+    </p>
   </main>
-
-  <footer class="footer">
-    <div class="footer-bottom">
-      <p>
-        © <span id="currentYear">2026</span>
-        Minha Ladies Bag. All rights reserved.
-      </p>
-    </div>
-  </footer>
-
-  <script src="./script.js"></script>
 
   <script type="module">
     import { auth, db } from "./firebase-config.js";
 
     import {
-      signInAnonymously,
-      onAuthStateChanged
+      signInAnonymously
     } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js";
 
     import {
@@ -312,232 +209,268 @@
 
     const CART_KEY = "minhaLadiesBagCart";
 
+    const cartItemsBox = document.getElementById("cartItems");
+    const subtotalBox = document.getElementById("subtotal");
+    const deliveryFeeBox = document.getElementById("deliveryFee");
+    const grandTotalBox = document.getElementById("grandTotal");
     const form = document.getElementById("checkoutForm");
-    const itemsElement = document.getElementById("orderItems");
-    const subtotalElement = document.getElementById("subtotal");
-    const grandTotalElement = document.getElementById("grandTotal");
-    const feeElement = document.getElementById("deliveryFeeText");
-    const messageElement = document.getElementById("checkoutMessage");
-    const submitButton = document.getElementById("placeOrderButton");
-    const cartCount = document.getElementById("cartCount");
+    const paymentMethod = document.getElementById("paymentMethod");
+    const instructions = document.getElementById("paymentInstructions");
+    const transactionFields = document.getElementById("transactionFields");
+    const placeButton = document.getElementById("placeOrderButton");
+    const messageBox = document.getElementById("message");
 
-    const confirmationBox = document.getElementById("confirmationBox");
-    const confirmationOrderId = document.getElementById("confirmationOrderId");
-    const confirmationStatus = document.getElementById("confirmationStatus");
-
-    let submitting = false;
+    let cart = [];
+    let cartSubtotal = 0;
+    let settings = {};
     let authReady = false;
+    let submitting = false;
 
-    document.getElementById("currentYear").textContent =
-      new Date().getFullYear();
+    function money(value) {
+      return "৳" + Number(value || 0).toLocaleString("en-BD");
+    }
+
+    function showMessage(text, type = "error") {
+      messageBox.textContent = text;
+      messageBox.className = type;
+      messageBox.classList.remove("hidden");
+    }
 
     function readCart() {
       try {
-        const data = JSON.parse(
-          localStorage.getItem(CART_KEY) || "[]"
-        );
-
-        return Array.isArray(data) ? data : [];
-      } catch (error) {
-        console.error("Could not read cart:", error);
+        const saved = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
+        return Array.isArray(saved) ? saved : [];
+      } catch {
         return [];
       }
     }
 
-    function money(value) {
-      return "৳" + Number(value).toLocaleString("en-BD");
+    function getProductId(item) {
+      return item?.productId || item?.id || item?.productID || "";
     }
 
-    function showConfirmation(orderId, status = "pending") {
-      confirmationOrderId.textContent = orderId;
-      confirmationStatus.textContent = String(status);
-      confirmationBox.classList.remove("hidden");
-
-      // IMPORTANT:
-      // Do not hide checkoutLayout here.
-      // The customer must be able to place another order.
+    function getQuantity(item) {
+      return Number(item?.quantity ?? item?.qty ?? 1);
     }
 
-    function showCart() {
-      const cart = readCart();
+    function safeText(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      })[char]);
+    }
 
-      itemsElement.replaceChildren();
+    function renderCart() {
+      cart = readCart();
+      cartSubtotal = 0;
 
-      let subtotal = 0;
-      let validItems = 0;
-      let totalQuantity = 0;
+      if (!cart.length) {
+        cartItemsBox.textContent = "Your cart is empty.";
+        subtotalBox.textContent = money(0);
+        deliveryFeeBox.textContent = "To be confirmed";
+        grandTotalBox.textContent = "To be confirmed";
+        placeButton.disabled = true;
+        return;
+      }
 
-      cart.forEach(item => {
-        const quantity = Number(item.quantity);
-        const price = Number(item.price);
+      cartItemsBox.innerHTML = cart.map(item => {
+        const name = item.name || item.productName || "Product";
+        const quantity = getQuantity(item);
+        const price = Number(item.price ?? item.unitPrice ?? 0);
 
-        if (
-          !Number.isInteger(quantity) ||
-          quantity < 1 ||
-          !Number.isFinite(price) ||
-          price < 0
-        ) {
-          return;
+        if (!Number.isInteger(quantity) || quantity < 1 ||
+            !Number.isFinite(price) || price < 0) {
+          return `<p>Invalid cart item. Please return to your cart.</p>`;
         }
 
-        validItems++;
-        totalQuantity += quantity;
-        subtotal += price * quantity;
+        cartSubtotal += price * quantity;
 
-        const line = document.createElement("div");
-        line.className = "order-line";
+        return `
+          <div class="summary-row">
+            <span>${safeText(name)} × ${quantity}</span>
+            <strong>${money(price * quantity)}</strong>
+          </div>
+        `;
+      }).join("");
 
-        const label = document.createElement("span");
-        label.textContent =
-          `${item.name || "Ladies Bag"} × ${quantity}`;
-
-        const amount = document.createElement("strong");
-        amount.textContent = money(price * quantity);
-
-        line.append(label, amount);
-        itemsElement.appendChild(line);
-      });
-
-      if (validItems === 0) {
-        itemsElement.textContent = "Your shopping bag is empty.";
-      }
-
-      subtotalElement.textContent = money(subtotal);
-      feeElement.textContent = "To be confirmed";
-
-      grandTotalElement.textContent =
-        "Total: " + money(subtotal) + " + delivery";
-
-      cartCount.textContent = String(totalQuantity);
-
-      submitButton.disabled =
-        validItems === 0 || !authReady || submitting;
+      subtotalBox.textContent = money(cartSubtotal);
+      deliveryFeeBox.textContent = "To be confirmed";
+      grandTotalBox.textContent = "To be confirmed";
+      placeButton.disabled = !authReady;
     }
 
-    async function ensureAnonymousUser() {
-      if (auth.currentUser) {
-        return auth.currentUser;
-      }
-
-      const result = await signInAnonymously(auth);
-      return result.user;
-    }
-
-    onAuthStateChanged(auth, async user => {
+    async function loadPaymentSettings() {
       try {
-        if (!user) {
-          authReady = false;
-          showCart();
-          await signInAnonymously(auth);
-          return;
-        }
-
-        authReady = true;
-        showCart();
+        const snapshot = await getDoc(doc(db, "settings", "payment"));
+        settings = snapshot.exists() ? snapshot.data() : {};
       } catch (error) {
-        console.error("Authentication error:", error);
-
-        messageElement.textContent =
-          "Could not sign in. Please refresh the page and try again.";
-
-        submitButton.disabled = true;
+        console.error("Could not load payment settings:", error);
+        settings = {};
       }
+      updatePaymentInstructions();
+    }
+
+    function updatePaymentInstructions() {
+      const method = paymentMethod.value;
+
+      transactionFields.classList.toggle("hidden", !["bkash", "nagad", "rocket"].includes(method));
+
+      if (!method || method === "cod") {
+        instructions.classList.add("hidden");
+        instructions.textContent = "";
+        return;
+      }
+
+      const labels = {
+        bkash: "bKash",
+        nagad: "Nagad",
+        rocket: "Rocket"
+      };
+
+      const numberKeys = {
+        bkash: "bkashNumber",
+        nagad: "nagadNumber",
+        rocket: "rocketNumber"
+      };
+
+      const number = String(settings[numberKeys[method]] || "").trim();
+
+      instructions.classList.remove("hidden");
+      instructions.textContent = number
+        ? `${labels[method]} payment number: ${number}. Send payment to this number, then enter your sender number and TrxID below.`
+        : `${labels[method]} payment number has not been configured yet. Please contact the seller before paying.`;
+
+      if (method !== "cod" && !number) {
+        placeButton.disabled = true;
+      } else {
+        placeButton.disabled = !authReady || !cart.length || submitting;
+      }
+    }
+
+    paymentMethod.addEventListener("change", updatePaymentInstructions);
+
+    async function ensureUser() {
+      if (!auth.currentUser) {
+        await signInAnonymously(auth);
+      }
+      authReady = Boolean(auth.currentUser);
+      renderCart();
+      updatePaymentInstructions();
+    }
+
+    ensureUser().catch(error => {
+      console.error(error);
+      showMessage("Could not initialize checkout. Please refresh and try again.");
+      placeButton.disabled = true;
     });
+
+    loadPaymentSettings();
+    renderCart();
 
     form.addEventListener("submit", async event => {
       event.preventDefault();
 
       if (submitting) return;
 
-      messageElement.textContent = "";
-
-      if (!form.reportValidity()) return;
-
-      const cart = readCart();
-
-      if (!cart.length) {
-        messageElement.textContent =
-          "Your cart is empty. Please choose a product first.";
-
-        showCart();
+      const user = auth.currentUser;
+      if (!user) {
+        showMessage("Please wait for checkout to finish loading.");
         return;
       }
 
+      const customerName = document.getElementById("customerName").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const address = document.getElementById("address").value.trim();
+      const method = paymentMethod.value;
+
+      const senderPhone = document.getElementById("senderPhone").value.trim();
+      const transactionId = document.getElementById("transactionId").value.trim();
+
+      if (!customerName || !phone || !address || !method) {
+        showMessage("Please complete all required customer and payment fields.");
+        return;
+      }
+
+      if (!cart.length) {
+        showMessage("Your cart is empty.");
+        return;
+      }
+
+      if (["bkash", "nagad", "rocket"].includes(method)) {
+        const numberKey = {
+          bkash: "bkashNumber",
+          nagad: "nagadNumber",
+          rocket: "rocketNumber"
+        }[method];
+
+        if (!String(settings[numberKey] || "").trim()) {
+          showMessage("The seller has not configured this payment number yet. Please contact the seller.");
+          return;
+        }
+
+        if (!senderPhone || !transactionId) {
+          showMessage("Enter the sender's number and transaction ID.");
+          return;
+        }
+      }
+
       submitting = true;
-      submitButton.disabled = true;
-      submitButton.textContent = "Placing Order...";
+      placeButton.disabled = true;
+      placeButton.textContent = "Placing Order...";
 
       try {
-        const user = await ensureAnonymousUser();
-
-        const verifiedItems = [];
         let verifiedSubtotal = 0;
+        const verifiedItems = [];
 
         for (const item of cart) {
-          if (!item.id) {
-            throw new Error(
-              "A cart item is missing its product ID. Remove it from your cart and add it again."
-            );
+          const productId = getProductId(item);
+          const quantity = getQuantity(item);
+
+          if (!productId || !Number.isInteger(quantity) || quantity < 1) {
+            throw new Error("A cart item is invalid. Please update your cart.");
           }
 
-          const quantity = Number(item.quantity);
+          const productSnapshot = await getDoc(doc(db, "products", productId));
 
-          if (!Number.isInteger(quantity) || quantity < 1) {
-            throw new Error("An item has an invalid quantity.");
+          if (!productSnapshot.exists()) {
+            throw new Error("A product is no longer available. Please update your cart.");
           }
 
-          const productSnap = await getDoc(
-            doc(db, "products", item.id)
-          );
+          const product = productSnapshot.data();
 
-          if (!productSnap.exists()) {
-            throw new Error(
-              "A product is no longer available. Please update your cart."
-            );
+          if (product.active !== true) {
+            throw new Error(`${product.name || "A product"} is currently unavailable.`);
           }
 
-          const product = productSnap.data();
-          const stock = Math.floor(Number(product.stock) || 0);
           const price = Number(product.price);
-
-          if (product.active !== true || quantity > stock) {
-            throw new Error(
-              `${product.name || "A product"} is out of stock or has insufficient stock.`
-            );
-          }
+          const stock = Number(product.stock);
 
           if (!Number.isFinite(price) || price < 0) {
-            throw new Error(
-              "A product has an invalid price. Please contact the shop."
-            );
+            throw new Error("A product has an invalid price.");
           }
 
-          verifiedSubtotal += price * quantity;
+          if (!Number.isFinite(stock) || stock < quantity) {
+            throw new Error(`${product.name || "A product"} does not have enough stock.`);
+          }
+
+          const lineTotal = price * quantity;
+          verifiedSubtotal += lineTotal;
 
           verifiedItems.push({
-            productId: item.id,
-            name: String(product.name || "Ladies Bag"),
+            productId,
+            name: String(product.name || "Product"),
             price,
-            quantity
+            quantity,
+            subtotal: lineTotal
           });
         }
 
-        const customerName =
-          document.getElementById("customerName").value.trim();
+        const isOnlinePayment = ["bkash", "nagad", "rocket"].includes(method);
 
-        const phone =
-          document.getElementById("phone").value.trim();
-
-        const address =
-          document.getElementById("address").value.trim();
-
-        if (!customerName || !phone || !address) {
-          throw new Error(
-            "Please complete all delivery details."
-          );
-        }
-
-        const order = {
+        const orderData = {
           ownerUid: user.uid,
           customerName,
           phone,
@@ -546,54 +479,42 @@
           total: verifiedSubtotal,
           deliveryFee: 0,
           status: "pending",
+          paymentMethod: method,
+          paymentStatus: isOnlinePayment ? "unverified" : "unpaid",
           createdAt: serverTimestamp()
         };
 
-        // Create a new Firestore order document every time.
-        const result = await addDoc(
-          collection(db, "orders"),
-          order
+        if (isOnlinePayment) {
+          orderData.senderPhone = senderPhone;
+          orderData.transactionId = transactionId;
+        }
+
+        const orderRef = await addDoc(collection(db, "orders"), orderData);
+
+        localStorage.removeItem(CART_KEY);
+        cart = [];
+        renderCart();
+
+        form.reset();
+        transactionFields.classList.add("hidden");
+        instructions.classList.add("hidden");
+
+        showMessage(
+          `Order placed successfully! Your Order ID is ${orderRef.id}. Save this ID for your records. Payment status: ${isOnlinePayment ? "Awaiting seller verification" : "Unpaid / Cash on Delivery"}.`,
+          "success"
         );
 
-        // Clear the cart only after Firestore confirms success.
-        localStorage.removeItem(CART_KEY);
-
-        // Clear the cart display and reset the form.
-        form.reset();
-        showCart();
-
-        // Show success without hiding the checkout form.
-        showConfirmation(result.id, "pending");
-
-        messageElement.textContent = "";
-
-        window.scrollTo({
-          top: 0,
-          behavior: "smooth"
-        });
-
+        placeButton.textContent = "Order Placed";
+        placeButton.disabled = true;
       } catch (error) {
-        console.error("Order submission error:", error);
-
-        const code = error?.code
-          ? ` (${error.code})`
-          : "";
-
-        messageElement.textContent =
-          (error?.message ||
-            "We couldn't submit your order. Please try again.") +
-          code;
-
+        console.error(error);
+        showMessage("Order failed: " + (error.message || "Please try again."));
+        placeButton.disabled = false;
+        placeButton.textContent = "Place Order";
       } finally {
         submitting = false;
-        submitButton.textContent = "Place Order";
-
-        showCart();
       }
     });
-
-    // Display the current cart when checkout loads.
-    showCart();
   </script>
 </body>
 </html>

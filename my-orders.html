@@ -29,7 +29,7 @@
       padding: 20px;
       margin: 18px 0;
       overflow-wrap: anywhere;
-      box-shadow: 0 5px 18px rgba(48, 40, 33, 0.05);
+      box-shadow: 0 5px 18px rgba(48,40,33,.05);
     }
 
     .orders-card h2 {
@@ -83,7 +83,7 @@
       border-radius: 20px;
       font-size: 13px;
       font-weight: 700;
-      margin: 5px 0 12px;
+      margin: 5px 5px 12px 0;
     }
 
     .status-confirmed,
@@ -105,12 +105,6 @@
       color: #a52222;
     }
 
-    .payment-unpaid,
-    .payment-unverified {
-      background: #fff0d6;
-      color: #855600;
-    }
-
     .orders-button {
       display: inline-block;
       padding: 11px 18px;
@@ -125,7 +119,7 @@
     }
 
     .orders-button:disabled {
-      opacity: 0.6;
+      opacity: .6;
       cursor: not-allowed;
     }
 
@@ -174,10 +168,6 @@
     .tracking-pending {
       color: #855600;
       font-weight: 600;
-    }
-
-    .hidden {
-      display: none !important;
     }
 
     @media (max-width: 650px) {
@@ -243,11 +233,12 @@
     </div>
 
     <div class="orders-note">
-      <strong>Your private order history</strong>
+      <strong>Order Confirmation Notice</strong>
       <p>
-        Only orders connected to your current Firebase account can be
-        displayed here. Keep using the same browser account to access
-        orders created on this device.
+        Thank you for shopping with Minha Ladies Bag!
+        Please allow 15–20 minutes for our team to verify your
+        order details and confirm your order. Check this page
+        for the latest status.
       </p>
     </div>
 
@@ -303,13 +294,12 @@
 
     let currentUid = null;
     let loading = false;
-    let authReady = false;
-    let authRequestPending = false;
     let loadAgain = false;
+    let signingIn = false;
+    let authReady = false;
 
     function money(value) {
       const amount = Number(value);
-
       return "৳" + (
         Number.isFinite(amount) ? amount : 0
       ).toLocaleString("en-BD");
@@ -319,7 +309,6 @@
       if (value === undefined || value === null || value === "") {
         return fallback;
       }
-
       return String(value);
     }
 
@@ -333,11 +322,37 @@
     }
 
     function formatDate(value) {
-      if (!value || typeof value.toDate !== "function") {
-        return "Date not available";
+      if (value && typeof value.toDate === "function") {
+        return value.toDate().toLocaleString("en-BD");
       }
 
-      return value.toDate().toLocaleString("en-BD");
+      // Supports older documents that saved a date as a string.
+      if (typeof value === "string" && value.trim()) {
+        const parsed = new Date(value);
+
+        if (!Number.isNaN(parsed.getTime())) {
+          return parsed.toLocaleString("en-BD");
+        }
+      }
+
+      return "Date not available";
+    }
+
+    function dateMillis(value) {
+      if (value && typeof value.toMillis === "function") {
+        return value.toMillis();
+      }
+
+      if (value && typeof value.toDate === "function") {
+        return value.toDate().getTime();
+      }
+
+      if (typeof value === "string") {
+        const parsed = new Date(value).getTime();
+        return Number.isNaN(parsed) ? 0 : parsed;
+      }
+
+      return 0;
     }
 
     function formatStatus(value) {
@@ -382,11 +397,19 @@
         .trim()
         .toLowerCase();
 
-      if (status === "paid") return "orders-status payment-paid";
-      if (status === "rejected") return "orders-status payment-rejected";
-      if (status === "unpaid") return "orders-status payment-unpaid";
+      if (status === "paid") {
+        return "orders-status payment-paid";
+      }
 
-      return "orders-status payment-unverified";
+      if (status === "rejected") {
+        return "orders-status payment-rejected";
+      }
+
+      if (status === "unpaid") {
+        return "orders-status";
+      }
+
+      return "orders-status";
     }
 
     function addMeta(card, label, value) {
@@ -424,7 +447,6 @@
         )
       );
 
-      // Payment method and status
       const paymentLabels = {
         cod: "Cash on Delivery",
         bkash: "bKash",
@@ -432,14 +454,15 @@
         rocket: "Rocket"
       };
 
-      const method = paymentLabels[order.paymentMethod]
-        || safeText(order.paymentMethod, "Not specified");
+      const method = paymentLabels[
+        safeText(order.paymentMethod).toLowerCase()
+      ] || safeText(order.paymentMethod, "Not specified");
 
       addMeta(card, "Payment Method", method);
 
       const paymentStatus = safeText(
         order.paymentStatus,
-        order.paymentMethod === "cod" ? "unpaid" : "unverified"
+        method === "Cash on Delivery" ? "unpaid" : "unverified"
       );
 
       card.appendChild(
@@ -470,7 +493,7 @@
           "span",
           "",
           safeText(item?.name || item?.productName, "Ladies Bag") +
-            " × " + quantity
+          " × " + quantity
         );
 
         const explicitTotal = item?.subtotal ?? item?.lineTotal;
@@ -478,17 +501,15 @@
           ? Number(explicitTotal)
           : price * quantity;
 
-        const priceElement = makeElement(
-          "strong",
-          "",
-          money(itemTotal)
+        row.append(
+          name,
+          makeElement("strong", "", money(itemTotal))
         );
 
-        row.append(name, priceElement);
         card.appendChild(row);
       });
 
-      // order.total is the product subtotal in the existing checkout.
+      // Existing checkout stores the product subtotal in order.total.
       const subtotal = Number(order.total ?? 0);
       const deliveryFee = Number(order.deliveryFee ?? 0);
       const grandTotal = subtotal + deliveryFee;
@@ -497,11 +518,7 @@
       addMeta(card, "Delivery Fee", money(deliveryFee));
 
       card.appendChild(
-        makeElement(
-          "p",
-          "orders-total",
-          "Total: " + money(grandTotal)
-        )
+        makeElement("p", "orders-total", "Total: " + money(grandTotal))
       );
 
       addMeta(
@@ -573,38 +590,44 @@
       list.replaceChildren();
 
       try {
+        const uidForRequest = currentUid;
+
+        // Fetch only orders owned by the signed-in customer.
         const ordersQuery = query(
           collection(db, "orders"),
-          where("ownerUid", "==", currentUid)
+          where("ownerUid", "==", uidForRequest)
         );
 
         const snapshot = await getDocs(ordersQuery);
 
-        // Do not display data if the authenticated account changed
-        // while Firestore was loading.
-        if (!auth.currentUser || auth.currentUser.uid !== currentUid) {
+        // Ignore an old response if the account changed while loading.
+        if (
+          !auth.currentUser ||
+          auth.currentUser.uid !== uidForRequest ||
+          currentUid !== uidForRequest
+        ) {
           message.textContent =
-            "Your browser account changed. Reconnecting...";
+            "Your account changed. Reconnecting to your orders...";
           return;
         }
 
-        const orders = snapshot.docs.map(item => ({
-          id: item.id,
-          ...item.data()
+        const orders = snapshot.docs.map(documentSnapshot => ({
+          id: documentSnapshot.id,
+          ...documentSnapshot.data()
         }));
 
-        orders.sort((a, b) => {
-          const dateA = a.createdAt?.toMillis?.() || 0;
-          const dateB = b.createdAt?.toMillis?.() || 0;
+        // Newest orders first.
+        orders.sort((a, b) => dateMillis(b.createdAt) - dateMillis(a.createdAt));
 
-          return dateB - dateA;
-        });
+        console.info(
+          "My Orders: documents returned for current account:",
+          orders.length
+        );
 
         if (orders.length === 0) {
           message.textContent =
-            "No orders found for this browser account. " +
-            "If you placed an order before, make sure this is the same " +
-            "Firebase account and browser used at checkout.";
+            "No orders were found for this account. " +
+            "Please check that your order was saved under this same account.";
           return;
         }
 
@@ -638,41 +661,36 @@
     });
 
     onAuthStateChanged(auth, async user => {
-      if (authRequestPending) return;
+      if (!user) {
+        authReady = false;
+        currentUid = null;
 
-      try {
-        if (!user) {
-          authReady = false;
-          currentUid = null;
-          message.textContent = "Connecting your browser account...";
+        if (signingIn) return;
 
-          authRequestPending = true;
+        signingIn = true;
+        message.textContent = "Connecting your browser account...";
 
-          try {
-            await signInAnonymously(auth);
-          } finally {
-            authRequestPending = false;
-          }
+        try {
+          await signInAnonymously(auth);
+          // The auth listener will run again when sign-in completes.
+        } catch (error) {
+          console.error("Anonymous sign-in error:", error);
 
-          // The auth-state listener will run again with the new user.
-          return;
+          message.textContent =
+            "Could not connect to your browser account.\n" +
+            (error.message || "Please reload and try again.") +
+            (error.code ? "\nError code: " + error.code : "");
+        } finally {
+          signingIn = false;
         }
 
-        currentUid = user.uid;
-        authReady = true;
-
-        await loadOrders();
-
-      } catch (error) {
-        console.error("My Orders authentication error:", error);
-
-        authReady = false;
-
-        message.textContent =
-          "Could not connect to your browser account.\n" +
-          (error.message || "Please reload and try again.") +
-          (error.code ? "\nError code: " + error.code : "");
+        return;
       }
+
+      currentUid = user.uid;
+      authReady = true;
+
+      await loadOrders();
     });
   </script>
 </body>

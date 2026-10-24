@@ -1,279 +1,86 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#e94f83">
-
-  <title>My Orders | Minha Ladies Bag</title>
-
-  <link rel="stylesheet" href="./style.css">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
-
-  <style>
-    .orders-page {
-      max-width: 900px;
-      margin: auto;
-      padding: 35px 18px 60px;
-    }
-
-    .orders-heading {
-      text-align: center;
-      margin-bottom: 25px;
-    }
-
-    .orders-card {
-      background: #fff;
-      border: 1px solid #eadfd9;
-      border-radius: 12px;
-      padding: 20px;
-      margin: 18px 0;
-      overflow-wrap: anywhere;
-      box-shadow: 0 5px 18px rgba(48,40,33,.05);
-    }
-
-    .orders-card h2 {
-      font-family: "Playfair Display", serif;
-      color: #8b3155;
-      margin-top: 0;
-    }
-
-    .orders-card h3 {
-      margin: 22px 0 8px;
-    }
-
-    .orders-note {
-      background: #fff5f8;
-      padding: 15px;
-      border-radius: 9px;
-      line-height: 1.7;
-      margin-bottom: 20px;
-    }
-
-    .orders-note p {
-      margin: 5px 0 0;
-    }
-
-    .order-meta {
-      line-height: 1.8;
-      overflow-wrap: anywhere;
-    }
-
-    .order-item {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 10px 0;
-      border-bottom: 1px solid #eadfd9;
-    }
-
-    .order-item span {
-      overflow-wrap: anywhere;
-    }
-
-    .order-item strong {
-      white-space: nowrap;
-    }
-
-    .orders-status {
-      display: inline-block;
-      background: #fff0d6;
-      color: #855600;
-      padding: 6px 12px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 700;
-      margin: 5px 5px 12px 0;
-    }
-
-    .status-confirmed,
-    .status-delivered,
-    .payment-paid {
-      background: #e6f7eb;
-      color: #206c36;
-    }
-
-    .status-shipped,
-    .status-out-for-delivery {
-      background: #e7f1ff;
-      color: #2056a0;
-    }
-
-    .status-cancelled,
-    .payment-rejected {
-      background: #ffe8e8;
-      color: #a52222;
-    }
-
-    .orders-button {
-      display: inline-block;
-      padding: 11px 18px;
-      background: #e94f83;
-      color: white;
-      border: 0;
-      border-radius: 7px;
-      text-decoration: none;
-      cursor: pointer;
-      margin: 10px 10px 0 0;
-      font: inherit;
-    }
-
-    .orders-button:disabled {
-      opacity: .6;
-      cursor: not-allowed;
-    }
-
-    .orders-message {
-      overflow-wrap: anywhere;
-      white-space: pre-wrap;
-      line-height: 1.7;
-    }
-
-    .orders-total {
-      font-size: 19px;
-      font-weight: 700;
-      color: #8b3155;
-      border-top: 1px solid #eadfd9;
-      padding-top: 12px;
-    }
-
-    .delivery-box {
-      background: #fff5f8;
-      border: 1px solid #f3d8e2;
-      border-radius: 9px;
-      padding: 13px 15px;
-      margin-top: 18px;
-    }
-
-    .delivery-box h3 {
-      margin: 0 0 10px;
-      color: #8b3155;
-    }
-
-    .delivery-box p {
-      margin: 7px 0;
-      line-height: 1.7;
-    }
-
-    .delivery-label {
-      font-weight: 700;
-    }
-
-    .tracking-value {
-      font-weight: 700;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-
-    .tracking-pending {
-      color: #855600;
-      font-weight: 600;
-    }
-
-    @media (max-width: 650px) {
-      .orders-page {
-        padding-top: 25px;
-      }
-
-      .orders-card {
-        padding: 16px;
-      }
-
-      .order-item {
-        font-size: 14px;
-      }
-    }
-  </style>
-</head>
-
-<body>
-  <div class="announcement">Discover your next favourite bag ✨</div>
-
-  <header class="header">
+  <title>My Orders | Minha Ladies Bag</title>  <link rel="stylesheet" href="./style.css">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">  <style>
+    .orders-page{max-width:900px;margin:auto;padding:35px 18px 60px}
+    .orders-heading{text-align:center;margin-bottom:25px}
+    .orders-card{background:#fff;border:1px solid #eadfd9;border-radius:12px;padding:20px;margin:18px 0;overflow-wrap:anywhere;box-shadow:0 5px 18px rgba(48,40,33,.05)}
+    .orders-card h2{font-family:"Playfair Display",serif;color:#8b3155;margin-top:0}
+    .orders-card h3{margin:22px 0 8px}
+    .orders-note{background:#fff5f8;padding:15px;border-radius:9px;line-height:1.7;margin-bottom:20px}
+    .orders-note p{margin:5px 0 0}
+    .order-meta{line-height:1.8;overflow-wrap:anywhere}
+    .order-item{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eadfd9}
+    .order-item span{overflow-wrap:anywhere}
+    .order-item strong{white-space:nowrap}
+    .orders-status{display:inline-block;background:#fff0d6;color:#855600;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:700;margin:5px 5px 12px 0}
+    .status-confirmed,.status-delivered,.payment-paid{background:#e6f7eb;color:#206c36}
+    .status-shipped{background:#e7f1ff;color:#2056a0}
+    .status-cancelled,.payment-rejected{background:#ffe8e8;color:#a52222}
+    .orders-button{display:inline-block;padding:11px 18px;background:#e94f83;color:white;border:0;border-radius:7px;text-decoration:none;cursor:pointer;margin:10px 10px 0 0;font:inherit}
+    .orders-button:disabled{opacity:.6;cursor:not-allowed}
+    .orders-message{overflow-wrap:anywhere;white-space:pre-wrap;line-height:1.7}
+    .orders-total{font-size:19px;font-weight:700;color:#8b3155;border-top:1px solid #eadfd9;padding-top:12px}
+    .delivery-box,.payment-box{background:#fff5f8;border:1px solid #f3d8e2;border-radius:9px;padding:13px 15px;margin-top:18px}
+    .delivery-box h3,.payment-box h3{margin:0 0 10px;color:#8b3155}
+    .delivery-box p,.payment-box p{margin:7px 0;line-height:1.7}
+    .delivery-label{font-weight:700}
+    .tracking-value{font-weight:700;overflow-wrap:anywhere;word-break:break-word}
+    .tracking-pending{color:#855600;font-weight:600}
+    .payment-box label{display:block;font-weight:600;margin:12px 0 6px}
+    .payment-box input,.payment-box select{width:100%;padding:12px;border:1px solid #d9cfc5;border-radius:8px;background:white;font:inherit;color:#302821}
+    .payment-help{font-size:14px;color:#776d64;line-height:1.7}
+    .deadline-warning{background:#fff0d6;color:#855600;padding:11px;border-radius:8px;line-height:1.7}
+    .deadline-expired{background:#ffe8e8;color:#a52222;padding:11px;border-radius:8px;line-height:1.7}
+    .inline-message{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;margin-top:10px}
+    @media(max-width:650px){.orders-page{padding-top:25px}.orders-card{padding:16px}.order-item{font-size:14px}}
+  </style></head><body>
+  <div class="announcement">Discover your next favourite bag ✨</div>  <header class="header">
     <a href="./index.html" class="brand-logo">
-      <img
-        src="./IMG-20261021-WA0000.jpg"
-        alt="MINHA Ladies Bag Logo"
-        width="48"
-        height="48"
-      >
-      <span class="brand-name">
-        MINHA
-        <small>LADIES BAG</small>
-      </span>
-    </a>
+      <img src="./IMG-20261021-WA0000.jpg" alt="MINHA Ladies Bag Logo" width="48" height="48">
+      <span class="brand-name">MINHA<small>LADIES BAG</small></span>
+    </a><button class="menu-toggle" id="menuToggle" type="button" aria-label="Toggle navigation" aria-expanded="false">☰</button>
 
-    <button
-      class="menu-toggle"
-      id="menuToggle"
-      type="button"
-      aria-label="Toggle navigation"
-      aria-expanded="false"
-    >☰</button>
+<nav class="nav" id="mainNav">
+  <a href="./index.html">Home</a>
+  <a href="./products.html">Shop</a>
+  <a href="./about.html">Our Story</a>
+  <a href="./contact.html">Contact</a>
+  <a href="./faq.html">FAQs</a>
+  <a href="./my-orders.html">My Orders</a>
+</nav>
 
-    <nav class="nav" id="mainNav">
-      <a href="./index.html">Home</a>
-      <a href="./products.html">Shop</a>
-      <a href="./about.html">Our Story</a>
-      <a href="./contact.html">Contact</a>
-      <a href="./faq.html">FAQs</a>
-      <a href="./my-orders.html">My Orders</a>
-    </nav>
+<a href="./cart.html" class="cart-link">Bag <span class="cart-count" id="cartCount">0</span></a>
 
-    <a href="./cart.html" class="cart-link">
-      Bag <span class="cart-count" id="cartCount">0</span>
-    </a>
-  </header>
-
-  <main class="orders-page">
+  </header>  <main class="orders-page">
     <div class="orders-heading">
       <span class="eyebrow">YOUR PURCHASES</span>
       <h1>My Orders</h1>
-      <p>View your orders and check their delivery status.</p>
-    </div>
+      <p>View your orders, payment instructions and delivery status.</p>
+    </div><div class="orders-note">
+  <strong>Order Confirmation Notice</strong>
+  <p>
+    Place your order first. The seller will review it and set the
+    delivery fee. If online payment is requested, pay within the
+    displayed 30-minute deadline after confirmation. COD orders
+    do not require advance payment.
+  </p>
+</div>
 
-    <div class="orders-note">
-      <strong>Order Confirmation Notice</strong>
-      <p>
-        Thank you for shopping with Minha Ladies Bag!
-        Please allow 15–20 minutes for our team to verify your
-        order details and confirm your order. Check this page
-        for the latest status.
-      </p>
-    </div>
+<p id="ordersMessage" class="orders-message" role="status" aria-live="polite">Connecting to your account...</p>
+<div id="ordersList"></div>
 
-    <p
-      id="ordersMessage"
-      class="orders-message"
-      role="status"
-      aria-live="polite"
-    >Connecting to your account...</p>
+<a class="orders-button" href="./products.html">Continue Shopping</a>
+<button class="orders-button" id="refreshOrders" type="button">Refresh Orders</button>
 
-    <div id="ordersList"></div>
-
-    <a class="orders-button" href="./products.html">
-      Continue Shopping
-    </a>
-
-    <button
-      class="orders-button"
-      id="refreshOrders"
-      type="button"
-    >Refresh Orders</button>
-  </main>
-
-  <footer class="footer">
+  </main>  <footer class="footer">
     <div class="footer-bottom">
-      <p>
-        © <span id="currentYear">2026</span>
-        Minha Ladies Bag. All rights reserved.
-      </p>
+      <p>© <span id="currentYear">2026</span> Minha Ladies Bag. All rights reserved.</p>
     </div>
-  </footer>
-
-  <script src="./script.js"></script>
-
-  <script type="module">
+  </footer>  <script src="./script.js"></script>  <script type="module">
     import { auth, db } from "./firebase-config.js";
 
     import {
@@ -285,7 +92,11 @@
       collection,
       getDocs,
       query,
-      where
+      where,
+      doc,
+      getDoc,
+      updateDoc,
+      deleteField
     } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
     const message = document.getElementById("ordersMessage");
@@ -293,283 +104,364 @@
     const refreshButton = document.getElementById("refreshOrders");
 
     let currentUid = null;
+    let authReady = false;
     let loading = false;
     let loadAgain = false;
     let signingIn = false;
-    let authReady = false;
+
+    let paymentSettings = null;
+    let paymentSettingsLoaded = false;
+
+    const paymentNames = {
+      pending: "Not selected yet",
+      cod: "Cash on Delivery",
+      bkash: "bKash",
+      nagad: "Nagad",
+      rocket: "Rocket"
+    };
 
     function money(value) {
       const amount = Number(value);
-      return "৳" + (
-        Number.isFinite(amount) ? amount : 0
-      ).toLocaleString("en-BD");
+      return "৳" + (Number.isFinite(amount) ? amount : 0).toLocaleString("en-BD");
     }
 
-    function safeText(value, fallback = "") {
-      if (value === undefined || value === null || value === "") {
-        return fallback;
-      }
-      return String(value);
+    function text(value, fallback = "") {
+      return value === undefined || value === null || value === ""
+        ? fallback
+        : String(value);
     }
 
-    function makeElement(tag, className = "", text = undefined) {
-      const element = document.createElement(tag);
-
-      if (className) element.className = className;
-      if (text !== undefined) element.textContent = text;
-
-      return element;
+    function el(tag, className = "", value = undefined) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (value !== undefined) node.textContent = value;
+      return node;
     }
 
     function formatDate(value) {
-      if (value && typeof value.toDate === "function") {
-        return value.toDate().toLocaleString("en-BD");
-      }
-
-      // Supports older documents that saved a date as a string.
-      if (typeof value === "string" && value.trim()) {
-        const parsed = new Date(value);
-
-        if (!Number.isNaN(parsed.getTime())) {
-          return parsed.toLocaleString("en-BD");
-        }
-      }
-
-      return "Date not available";
+      const date = toDate(value);
+      return date ? date.toLocaleString("en-BD") : "Date not available";
     }
 
-    function dateMillis(value) {
-      if (value && typeof value.toMillis === "function") {
-        return value.toMillis();
+    function toDate(value) {
+      if (value && typeof value.toDate === "function") return value.toDate();
+      if (typeof value === "string" || typeof value === "number") {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
       }
-
-      if (value && typeof value.toDate === "function") {
-        return value.toDate().getTime();
-      }
-
-      if (typeof value === "string") {
-        const parsed = new Date(value).getTime();
-        return Number.isNaN(parsed) ? 0 : parsed;
-      }
-
-      return 0;
+      return null;
     }
 
-    function formatStatus(value) {
-      return safeText(value, "pending")
+    function millis(value) {
+      const date = toDate(value);
+      return date ? date.getTime() : 0;
+    }
+
+    function statusText(value) {
+      return text(value, "pending")
         .trim()
         .replace(/[_-]+/g, " ")
         .replace(/\s+/g, " ")
         .toUpperCase();
     }
 
-    function getStatusClass(value) {
-      const status = safeText(value, "pending")
-        .trim()
-        .toLowerCase()
-        .replace(/[_\s]+/g, "-");
-
-      if (status === "confirmed") {
-        return "orders-status status-confirmed";
-      }
-
-      if (status === "delivered") {
-        return "orders-status status-delivered";
-      }
-
-      if (status === "shipped") {
-        return "orders-status status-shipped";
-      }
-
-      if (status === "out-for-delivery") {
-        return "orders-status status-out-for-delivery";
-      }
-
-      if (status === "cancelled" || status === "canceled") {
-        return "orders-status status-cancelled";
-      }
-
+    function statusClass(value) {
+      const status = text(value, "pending").toLowerCase().replace(/[_\s]+/g, "-");
+      if (status === "confirmed") return "orders-status status-confirmed";
+      if (status === "delivered") return "orders-status status-delivered";
+      if (status === "shipped") return "orders-status status-shipped";
+      if (status === "cancelled" || status === "canceled") return "orders-status status-cancelled";
       return "orders-status";
     }
 
-    function getPaymentStatusClass(value) {
-      const status = safeText(value, "unverified")
-        .trim()
-        .toLowerCase();
-
-      if (status === "paid") {
-        return "orders-status payment-paid";
-      }
-
-      if (status === "rejected") {
-        return "orders-status payment-rejected";
-      }
-
-      if (status === "unpaid") {
-        return "orders-status";
-      }
-
+    function paymentClass(value) {
+      const status = text(value, "unpaid").toLowerCase();
+      if (status === "paid") return "orders-status payment-paid";
+      if (status === "rejected") return "orders-status payment-rejected";
       return "orders-status";
     }
 
     function addMeta(card, label, value) {
-      const paragraph = makeElement("p", "order-meta");
-      const strong = makeElement("strong", "", label + ": ");
+      const p = el("p", "order-meta");
+      p.append(el("strong", "", label + ": "), document.createTextNode(value));
+      card.appendChild(p);
+    }
 
-      paragraph.append(
-        strong,
-        document.createTextNode(value)
-      );
+    async function loadPaymentSettings() {
+      try {
+        const snapshot = await getDoc(doc(db, "settings", "payment"));
+        paymentSettings = snapshot.exists() ? snapshot.data() : {};
+        paymentSettingsLoaded = true;
+      } catch (error) {
+        console.error("Payment settings error:", error);
+        paymentSettings = {};
+        paymentSettingsLoaded = false;
+      }
+    }
 
-      card.appendChild(paragraph);
+    function addPaymentForm(card, order) {
+      const box = el("section", "payment-box");
+      box.appendChild(el("h3", "", "Choose Payment Method"));
+
+      const intro = el("p", "payment-help",
+        "Choose Cash on Delivery or submit online payment details after paying the displayed final total.");
+      box.appendChild(intro);
+
+      const selectLabel = el("label", "", "Payment method");
+      const select = el("select");
+      select.innerHTML = `
+        <option value="cod">Cash on Delivery</option>
+        <option value="bkash">bKash</option>
+        <option value="nagad">Nagad</option>
+        <option value="rocket">Rocket</option>
+      `;
+      select.value = ["cod", "bkash", "nagad", "rocket"].includes(order.paymentMethod)
+        ? order.paymentMethod
+        : "cod";
+
+      selectLabel.appendChild(select);
+      box.appendChild(selectLabel);
+
+      const numberInfo = el("div");
+      const onlineFields = el("div");
+      const senderLabel = el("label", "", "Sender mobile number");
+      const senderInput = el("input");
+      senderInput.type = "tel";
+      senderInput.maxLength = 25;
+      senderInput.autocomplete = "tel";
+      senderInput.placeholder = "Number used to send payment";
+      senderInput.value = text(order.senderPhone);
+
+      const txnLabel = el("label", "", "Transaction ID (TXN ID)");
+      const txnInput = el("input");
+      txnInput.type = "text";
+      txnInput.maxLength = 120;
+      txnInput.autocomplete = "off";
+      txnInput.placeholder = "Enter the transaction ID";
+      txnInput.value = text(order.transactionId);
+
+      onlineFields.append(senderLabel, senderInput, txnLabel, txnInput);
+      box.appendChild(numberInfo);
+      box.appendChild(onlineFields);
+
+      const result = el("p", "inline-message");
+      result.setAttribute("role", "status");
+      box.appendChild(result);
+
+      const submit = el("button", "orders-button", "Save Payment Choice");
+      submit.type = "button";
+      box.appendChild(submit);
+
+      function updatePaymentFields() {
+        const method = select.value;
+        onlineFields.style.display = method === "cod" ? "none" : "block";
+        numberInfo.replaceChildren();
+
+        if (method !== "cod") {
+          const number = text(paymentSettings?.[method + "Number"]).trim();
+          const label = paymentNames[method];
+
+          if (number) {
+            numberInfo.appendChild(el("p", "", `${label} payment number: ${number}`));
+          } else {
+            numberInfo.appendChild(el("p", "deadline-warning",
+              `${label} payment number has not been configured yet. Please contact the seller before sending money.`));
+          }
+
+          if (!paymentSettingsLoaded) {
+            numberInfo.appendChild(el("p", "payment-help",
+              "Payment account settings could not be loaded. Refresh or contact the seller."));
+          }
+        }
+
+        submit.textContent = method === "cod"
+          ? "Confirm Cash on Delivery"
+          : "Submit Payment Details";
+      }
+
+      select.addEventListener("change", updatePaymentFields);
+      updatePaymentFields();
+
+      submit.addEventListener("click", async () => {
+        if (submit.disabled) return;
+
+        const user = auth.currentUser;
+        if (!user || user.uid !== order.ownerUid) {
+          result.textContent = "Your account could not be verified. Refresh this page.";
+          return;
+        }
+
+        if (order.status !== "confirmed") {
+          result.textContent = "This order is no longer awaiting payment selection.";
+          return;
+        }
+
+        if (text(order.paymentStatus).toLowerCase() === "paid") {
+          result.textContent = "This order is already marked as paid.";
+          return;
+        }
+
+        const method = select.value;
+        const updates = {};
+
+        if (method === "cod") {
+          updates.paymentMethod = "cod";
+          updates.paymentStatus = "unpaid";
+          updates.senderPhone = deleteField();
+          updates.transactionId = deleteField();
+        } else {
+          const deadline = toDate(order.paymentDeadline);
+
+          if (!deadline) {
+            result.textContent = "The seller has not set a payment deadline. Please contact the seller.";
+            return;
+          }
+
+          if (Date.now() > deadline.getTime()) {
+            result.textContent = "The payment deadline has expired. Contact the seller to confirm whether this order can still be paid.";
+            return;
+          }
+
+          if (!paymentSettingsLoaded || !text(paymentSettings?.[method + "Number"]).trim()) {
+            result.textContent = "The seller's payment number is unavailable. Please contact the seller before paying.";
+            return;
+          }
+
+          const senderPhone = senderInput.value.trim();
+          const transactionId = txnInput.value.trim();
+
+          if (!senderPhone || !transactionId) {
+            result.textContent = "Enter both the sender mobile number and transaction ID.";
+            return;
+          }
+
+          updates.paymentMethod = method;
+          updates.paymentStatus = "unverified";
+          updates.senderPhone = senderPhone;
+          updates.transactionId = transactionId;
+        }
+
+        submit.disabled = true;
+        result.textContent = "Saving...";
+
+        try {
+          await updateDoc(doc(db, "orders", order.id), updates);
+
+          result.textContent = method === "cod"
+            ? "Cash on Delivery selected. No advance payment is required. The seller will update your order."
+            : "Payment details submitted. The seller must verify the transaction before marking it as paid.";
+
+          await loadOrders();
+        } catch (error) {
+          console.error("Payment choice update error:", error);
+          result.textContent =
+            "Could not save your choice: " + (error.message || "Please try again.") +
+            (error.code ? "\nError code: " + error.code : "");
+        } finally {
+          submit.disabled = false;
+        }
+      });
+
+      card.appendChild(box);
     }
 
     function renderOrder(order) {
-      const card = makeElement("article", "orders-card");
+      const card = el("article", "orders-card");
+      card.appendChild(el("h2", "", "Order #" + order.id));
+      card.appendChild(el("p", "order-meta", "Order date: " + formatDate(order.createdAt)));
 
-      card.appendChild(
-        makeElement("h2", "", "Order #" + order.id)
-      );
+      card.appendChild(el("span", statusClass(order.status),
+        "Order Status: " + statusText(order.status)));
 
-      card.appendChild(
-        makeElement(
-          "p",
-          "order-meta",
-          "Order date: " + formatDate(order.createdAt)
-        )
-      );
+      const method = text(order.paymentMethod, "pending").toLowerCase();
+      const paymentStatus = text(order.paymentStatus, "unpaid").toLowerCase();
 
-      card.appendChild(
-        makeElement(
-          "span",
-          getStatusClass(order.status),
-          "Order Status: " + formatStatus(order.status)
-        )
-      );
+      addMeta(card, "Payment Method", paymentNames[method] || method);
+      card.appendChild(el("span", paymentClass(paymentStatus),
+        "Payment: " + statusText(paymentStatus)));
 
-      const paymentLabels = {
-        cod: "Cash on Delivery",
-        bkash: "bKash",
-        nagad: "Nagad",
-        rocket: "Rocket"
-      };
-
-      const method = paymentLabels[
-        safeText(order.paymentMethod).toLowerCase()
-      ] || safeText(order.paymentMethod, "Not specified");
-
-      addMeta(card, "Payment Method", method);
-
-      const paymentStatus = safeText(
-        order.paymentStatus,
-        method === "Cash on Delivery" ? "unpaid" : "unverified"
-      );
-
-      card.appendChild(
-        makeElement(
-          "span",
-          getPaymentStatusClass(paymentStatus),
-          "Payment: " + formatStatus(paymentStatus)
-        )
-      );
-
-      card.appendChild(makeElement("h3", "", "Items"));
-
+      card.appendChild(el("h3", "", "Items"));
       const items = Array.isArray(order.items) ? order.items : [];
 
-      if (items.length === 0) {
-        card.appendChild(
-          makeElement("p", "order-meta", "No item details available.")
-        );
+      if (!items.length) {
+        card.appendChild(el("p", "order-meta", "No item details available."));
       }
 
       items.forEach(item => {
-        const row = makeElement("div", "order-item");
-
+        const row = el("div", "order-item");
         const quantity = Number(item?.quantity ?? item?.qty ?? 1);
         const price = Number(item?.price ?? item?.unitPrice ?? 0);
-
-        const name = makeElement(
-          "span",
-          "",
-          safeText(item?.name || item?.productName, "Ladies Bag") +
-          " × " + quantity
-        );
-
         const explicitTotal = item?.subtotal ?? item?.lineTotal;
-        const itemTotal = explicitTotal != null
-          ? Number(explicitTotal)
-          : price * quantity;
+        const total = explicitTotal != null ? Number(explicitTotal) : price * quantity;
 
         row.append(
-          name,
-          makeElement("strong", "", money(itemTotal))
+          el("span", "", text(item?.name || item?.productName, "Ladies Bag") + " × " + quantity),
+          el("strong", "", money(total))
         );
-
         card.appendChild(row);
       });
 
-      // Existing checkout stores the product subtotal in order.total.
       const subtotal = Number(order.total ?? 0);
       const deliveryFee = Number(order.deliveryFee ?? 0);
-      const grandTotal = subtotal + deliveryFee;
+      const grandTotal = Number(order.grandTotal ?? (subtotal + deliveryFee));
 
       addMeta(card, "Subtotal", money(subtotal));
       addMeta(card, "Delivery Fee", money(deliveryFee));
+      card.appendChild(el("p", "orders-total", "Final Total: " + money(grandTotal)));
+      addMeta(card, "Delivery Address", text(order.address, "Not available"));
 
-      card.appendChild(
-        makeElement("p", "orders-total", "Total: " + money(grandTotal))
-      );
+      const deadline = toDate(order.paymentDeadline);
+      const isConfirmed = text(order.status).toLowerCase() === "confirmed";
+      const isCOD = method === "cod";
+      const isPaid = paymentStatus === "paid";
+      const isCancelled = ["cancelled", "canceled"].includes(text(order.status).toLowerCase());
 
-      addMeta(
-        card,
-        "Delivery Address",
-        safeText(order.address, "Not available")
-      );
-
-      const deliveryBox = makeElement("section", "delivery-box");
-
-      deliveryBox.appendChild(
-        makeElement("h3", "", "🚚 Courier & Tracking Details")
-      );
-
-      const courierName = safeText(order.courierName).trim();
-      const trackingNumber = safeText(order.trackingNumber).trim();
-
-      const courierParagraph = makeElement("p");
-
-      courierParagraph.append(
-        makeElement("span", "delivery-label", "Courier Name: "),
-        document.createTextNode(courierName || "Not assigned yet")
-      );
-
-      if (!courierName) {
-        courierParagraph.classList.add("tracking-pending");
+      if (isConfirmed && !isCOD && !isPaid && !isCancelled) {
+        if (deadline) {
+          if (Date.now() <= deadline.getTime()) {
+            card.appendChild(el("p", "deadline-warning",
+              "Online payment deadline: " + deadline.toLocaleString("en-BD") +
+              ". Please complete payment within 30 minutes of confirmation."));
+          } else {
+            card.appendChild(el("p", "deadline-expired",
+              "The online payment deadline has expired. Contact the seller to confirm whether the order can still be accepted. Do not send money without confirmation."));
+          }
+        } else {
+          card.appendChild(el("p", "deadline-warning",
+            "Payment deadline has not been set. Please contact the seller."));
+        }
       }
 
-      deliveryBox.appendChild(courierParagraph);
+      if (isConfirmed && !isPaid && !isCancelled) {
+        addPaymentForm(card, order);
+      } else if (isCOD) {
+        card.appendChild(el("p", "payment-help",
+          "Cash on Delivery selected. No advance payment deadline applies."));
+      }
 
-      const trackingParagraph = makeElement("p");
+      const deliveryBox = el("section", "delivery-box");
+      deliveryBox.appendChild(el("h3", "", "🚚 Courier & Tracking Details"));
 
-      trackingParagraph.append(
-        makeElement("span", "delivery-label", "Tracking Number: "),
-        makeElement(
-          "span",
-          trackingNumber ? "tracking-value" : "tracking-pending",
-          trackingNumber || "Not available yet"
-        )
+      const courierName = text(order.courierName).trim();
+      const trackingNumber = text(order.trackingNumber).trim();
+
+      const courier = el("p");
+      courier.append(el("span", "delivery-label", "Courier Name: "),
+        document.createTextNode(courierName || "Not assigned yet"));
+      if (!courierName) courier.classList.add("tracking-pending");
+      deliveryBox.appendChild(courier);
+
+      const tracking = el("p");
+      tracking.append(
+        el("span", "delivery-label", "Tracking Number: "),
+        el("span", trackingNumber ? "tracking-value" : "tracking-pending",
+          trackingNumber || "Not available yet")
       );
-
-      deliveryBox.appendChild(trackingParagraph);
+      deliveryBox.appendChild(tracking);
 
       if (!courierName && !trackingNumber) {
-        deliveryBox.appendChild(
-          makeElement(
-            "p",
-            "order-meta",
-            "Courier information will appear here after the shop updates your order."
-          )
-        );
+        deliveryBox.appendChild(el("p", "order-meta",
+          "Courier information will appear here after the shop updates your order."));
       }
 
       card.appendChild(deliveryBox);
@@ -590,61 +482,45 @@
       list.replaceChildren();
 
       try {
-        const uidForRequest = currentUid;
+        const uid = currentUid;
 
-        // Fetch only orders owned by the signed-in customer.
+        await loadPaymentSettings();
+
         const ordersQuery = query(
           collection(db, "orders"),
-          where("ownerUid", "==", uidForRequest)
+          where("ownerUid", "==", uid)
         );
 
         const snapshot = await getDocs(ordersQuery);
 
-        // Ignore an old response if the account changed while loading.
-        if (
-          !auth.currentUser ||
-          auth.currentUser.uid !== uidForRequest ||
-          currentUid !== uidForRequest
-        ) {
-          message.textContent =
-            "Your account changed. Reconnecting to your orders...";
+        if (!auth.currentUser || auth.currentUser.uid !== uid || currentUid !== uid) {
+          message.textContent = "Account changed. Reconnecting...";
           return;
         }
 
-        const orders = snapshot.docs.map(documentSnapshot => ({
-          id: documentSnapshot.id,
-          ...documentSnapshot.data()
+        const orders = snapshot.docs.map(item => ({
+          id: item.id,
+          ...item.data()
         }));
 
-        // Newest orders first.
-        orders.sort((a, b) => dateMillis(b.createdAt) - dateMillis(a.createdAt));
+        orders.sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
 
-        console.info(
-          "My Orders: documents returned for current account:",
-          orders.length
-        );
-
-        if (orders.length === 0) {
+        if (!orders.length) {
           message.textContent =
-            "No orders were found for this account. " +
-            "Please check that your order was saved under this same account.";
+            "No orders were found for this browser account. If you placed an order in another browser or cleared browser data, it may belong to a different anonymous account.";
           return;
         }
 
         orders.forEach(renderOrder);
-
-        message.textContent =
-          "You have " + orders.length +
+        message.textContent = "You have " + orders.length +
           (orders.length === 1 ? " order." : " orders.");
 
       } catch (error) {
         console.error("My Orders loading error:", error);
-
         message.textContent =
           "Could not load your orders.\n" +
           (error.message || "Please try again.") +
           (error.code ? "\nError code: " + error.code : "");
-
       } finally {
         loading = false;
         refreshButton.disabled = false;
@@ -656,9 +532,7 @@
       }
     }
 
-    refreshButton.addEventListener("click", () => {
-      loadOrders();
-    });
+    refreshButton.addEventListener("click", loadOrders);
 
     onAuthStateChanged(auth, async user => {
       if (!user) {
@@ -672,10 +546,8 @@
 
         try {
           await signInAnonymously(auth);
-          // The auth listener will run again when sign-in completes.
         } catch (error) {
           console.error("Anonymous sign-in error:", error);
-
           message.textContent =
             "Could not connect to your browser account.\n" +
             (error.message || "Please reload and try again.") +
@@ -683,15 +555,12 @@
         } finally {
           signingIn = false;
         }
-
         return;
       }
 
       currentUid = user.uid;
       authReady = true;
-
       await loadOrders();
     });
-  </script>
-</body>
+  </script></body>
 </html>

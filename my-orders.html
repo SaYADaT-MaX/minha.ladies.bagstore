@@ -87,7 +87,8 @@
     }
 
     .status-confirmed,
-    .status-delivered {
+    .status-delivered,
+    .payment-paid {
       background: #e6f7eb;
       color: #206c36;
     }
@@ -98,9 +99,16 @@
       color: #2056a0;
     }
 
-    .status-cancelled {
+    .status-cancelled,
+    .payment-rejected {
       background: #ffe8e8;
       color: #a52222;
+    }
+
+    .payment-unpaid,
+    .payment-unverified {
+      background: #fff0d6;
+      color: #855600;
     }
 
     .orders-button {
@@ -238,7 +246,8 @@
       <strong>Your private order history</strong>
       <p>
         Only orders connected to your current Firebase account can be
-        displayed here.
+        displayed here. Keep using the same browser account to access
+        orders created on this device.
       </p>
     </div>
 
@@ -247,7 +256,7 @@
       class="orders-message"
       role="status"
       aria-live="polite"
-    >Loading your orders...</p>
+    >Connecting to your account...</p>
 
     <div id="ordersList"></div>
 
@@ -294,6 +303,9 @@
 
     let currentUid = null;
     let loading = false;
+    let authReady = false;
+    let authRequestPending = false;
+    let loadAgain = false;
 
     function money(value) {
       const amount = Number(value);
@@ -314,13 +326,8 @@
     function makeElement(tag, className = "", text = undefined) {
       const element = document.createElement(tag);
 
-      if (className) {
-        element.className = className;
-      }
-
-      if (text !== undefined) {
-        element.textContent = text;
-      }
+      if (className) element.className = className;
+      if (text !== undefined) element.textContent = text;
 
       return element;
     }
@@ -370,6 +377,18 @@
       return "orders-status";
     }
 
+    function getPaymentStatusClass(value) {
+      const status = safeText(value, "unverified")
+        .trim()
+        .toLowerCase();
+
+      if (status === "paid") return "orders-status payment-paid";
+      if (status === "rejected") return "orders-status payment-rejected";
+      if (status === "unpaid") return "orders-status payment-unpaid";
+
+      return "orders-status payment-unverified";
+    }
+
     function addMeta(card, label, value) {
       const paragraph = makeElement("p", "order-meta");
       const strong = makeElement("strong", "", label + ": ");
@@ -385,7 +404,6 @@
     function renderOrder(order) {
       const card = makeElement("article", "orders-card");
 
-      // Order ID and date
       card.appendChild(
         makeElement("h2", "", "Order #" + order.id)
       );
@@ -398,16 +416,40 @@
         )
       );
 
-      // Order status
       card.appendChild(
         makeElement(
           "span",
           getStatusClass(order.status),
-          "Status: " + formatStatus(order.status)
+          "Order Status: " + formatStatus(order.status)
         )
       );
 
-      // Products
+      // Payment method and status
+      const paymentLabels = {
+        cod: "Cash on Delivery",
+        bkash: "bKash",
+        nagad: "Nagad",
+        rocket: "Rocket"
+      };
+
+      const method = paymentLabels[order.paymentMethod]
+        || safeText(order.paymentMethod, "Not specified");
+
+      addMeta(card, "Payment Method", method);
+
+      const paymentStatus = safeText(
+        order.paymentStatus,
+        order.paymentMethod === "cod" ? "unpaid" : "unverified"
+      );
+
+      card.appendChild(
+        makeElement(
+          "span",
+          getPaymentStatusClass(paymentStatus),
+          "Payment: " + formatStatus(paymentStatus)
+        )
+      );
+
       card.appendChild(makeElement("h3", "", "Items"));
 
       const items = Array.isArray(order.items) ? order.items : [];
@@ -421,45 +463,53 @@
       items.forEach(item => {
         const row = makeElement("div", "order-item");
 
+        const quantity = Number(item?.quantity ?? item?.qty ?? 1);
+        const price = Number(item?.price ?? item?.unitPrice ?? 0);
+
         const name = makeElement(
           "span",
           "",
-          safeText(item.name, "Ladies Bag") +
-            " × " +
-            Number(item.quantity || 0)
+          safeText(item?.name || item?.productName, "Ladies Bag") +
+            " × " + quantity
         );
 
-        const itemTotal =
-          Number(item.price || 0) * Number(item.quantity || 0);
+        const explicitTotal = item?.subtotal ?? item?.lineTotal;
+        const itemTotal = explicitTotal != null
+          ? Number(explicitTotal)
+          : price * quantity;
 
-        const price = makeElement("strong", "", money(itemTotal));
+        const priceElement = makeElement(
+          "strong",
+          "",
+          money(itemTotal)
+        );
 
-        row.append(name, price);
+        row.append(name, priceElement);
         card.appendChild(row);
       });
 
-      // Price calculation:
-      // order.total is treated as the product subtotal.
-      // deliveryFee is added separately.
-      const subtotal = Number(order.total || 0);
-      const deliveryFee = Number(order.deliveryFee || 0);
+      // order.total is the product subtotal in the existing checkout.
+      const subtotal = Number(order.total ?? 0);
+      const deliveryFee = Number(order.deliveryFee ?? 0);
       const grandTotal = subtotal + deliveryFee;
 
       addMeta(card, "Subtotal", money(subtotal));
       addMeta(card, "Delivery Fee", money(deliveryFee));
 
       card.appendChild(
-        makeElement("p", "orders-total", "Total: " + money(grandTotal))
+        makeElement(
+          "p",
+          "orders-total",
+          "Total: " + money(grandTotal)
+        )
       );
 
-      // Customer delivery address
       addMeta(
         card,
         "Delivery Address",
         safeText(order.address, "Not available")
       );
 
-      // Courier and tracking information
       const deliveryBox = makeElement("section", "delivery-box");
 
       deliveryBox.appendChild(
@@ -470,11 +520,10 @@
       const trackingNumber = safeText(order.trackingNumber).trim();
 
       const courierParagraph = makeElement("p");
+
       courierParagraph.append(
         makeElement("span", "delivery-label", "Courier Name: "),
-        document.createTextNode(
-          courierName || "Not assigned yet"
-        )
+        document.createTextNode(courierName || "Not assigned yet")
       );
 
       if (!courierName) {
@@ -484,10 +533,11 @@
       deliveryBox.appendChild(courierParagraph);
 
       const trackingParagraph = makeElement("p");
+
       trackingParagraph.append(
         makeElement("span", "delivery-label", "Tracking Number: "),
         makeElement(
-          trackingNumber ? "span" : "span",
+          "span",
           trackingNumber ? "tracking-value" : "tracking-pending",
           trackingNumber || "Not available yet"
         )
@@ -500,7 +550,7 @@
           makeElement(
             "p",
             "order-meta",
-            "Your courier information will appear here after the shop updates your order."
+            "Courier information will appear here after the shop updates your order."
           )
         );
       }
@@ -510,7 +560,10 @@
     }
 
     async function loadOrders() {
-      if (!currentUid || loading) {
+      if (!authReady || !currentUid) return;
+
+      if (loading) {
+        loadAgain = true;
         return;
       }
 
@@ -527,9 +580,17 @@
 
         const snapshot = await getDocs(ordersQuery);
 
-        const orders = snapshot.docs.map(documentSnapshot => ({
-          id: documentSnapshot.id,
-          ...documentSnapshot.data()
+        // Do not display data if the authenticated account changed
+        // while Firestore was loading.
+        if (!auth.currentUser || auth.currentUser.uid !== currentUid) {
+          message.textContent =
+            "Your browser account changed. Reconnecting...";
+          return;
+        }
+
+        const orders = snapshot.docs.map(item => ({
+          id: item.id,
+          ...item.data()
         }));
 
         orders.sort((a, b) => {
@@ -541,57 +602,76 @@
 
         if (orders.length === 0) {
           message.textContent =
-            "No orders found for this browser account yet. " +
-            "Orders created under a different Firebase account may not appear here.";
-
+            "No orders found for this browser account. " +
+            "If you placed an order before, make sure this is the same " +
+            "Firebase account and browser used at checkout.";
           return;
         }
 
-        message.textContent =
-          "You have " +
-          orders.length +
-          (orders.length === 1 ? " order." : " orders.");
-
         orders.forEach(renderOrder);
 
+        message.textContent =
+          "You have " + orders.length +
+          (orders.length === 1 ? " order." : " orders.");
+
       } catch (error) {
-        console.error("Order history error:", error);
+        console.error("My Orders loading error:", error);
 
         message.textContent =
-          "Could not load your orders. " +
+          "Could not load your orders.\n" +
           (error.message || "Please try again.") +
-          (error.code ? " (" + error.code + ")" : "");
+          (error.code ? "\nError code: " + error.code : "");
 
       } finally {
         loading = false;
         refreshButton.disabled = false;
+
+        if (loadAgain) {
+          loadAgain = false;
+          await loadOrders();
+        }
       }
     }
 
-    refreshButton.addEventListener("click", loadOrders);
+    refreshButton.addEventListener("click", () => {
+      loadOrders();
+    });
 
     onAuthStateChanged(auth, async user => {
+      if (authRequestPending) return;
+
       try {
         if (!user) {
-          message.textContent =
-            "Connecting your secure browser account...";
+          authReady = false;
+          currentUid = null;
+          message.textContent = "Connecting your browser account...";
 
-          const result = await signInAnonymously(auth);
-          currentUid = result.user.uid;
+          authRequestPending = true;
 
-          await loadOrders();
+          try {
+            await signInAnonymously(auth);
+          } finally {
+            authRequestPending = false;
+          }
+
+          // The auth-state listener will run again with the new user.
           return;
         }
 
         currentUid = user.uid;
+        authReady = true;
+
         await loadOrders();
 
       } catch (error) {
-        console.error("Authentication error:", error);
+        console.error("My Orders authentication error:", error);
+
+        authReady = false;
 
         message.textContent =
-          "Could not connect to your account. " +
-          (error.message || "Please reload the page.");
+          "Could not connect to your browser account.\n" +
+          (error.message || "Please reload and try again.") +
+          (error.code ? "\nError code: " + error.code : "");
       }
     });
   </script>

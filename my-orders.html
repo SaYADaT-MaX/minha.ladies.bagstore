@@ -1,86 +1,272 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#e94f83">
-  <title>My Orders | Minha Ladies Bag</title>  <link rel="stylesheet" href="./style.css">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">  <style>
-    .orders-page{max-width:900px;margin:auto;padding:35px 18px 60px}
-    .orders-heading{text-align:center;margin-bottom:25px}
-    .orders-card{background:#fff;border:1px solid #eadfd9;border-radius:12px;padding:20px;margin:18px 0;overflow-wrap:anywhere;box-shadow:0 5px 18px rgba(48,40,33,.05)}
-    .orders-card h2{font-family:"Playfair Display",serif;color:#8b3155;margin-top:0}
-    .orders-card h3{margin:22px 0 8px}
-    .orders-note{background:#fff5f8;padding:15px;border-radius:9px;line-height:1.7;margin-bottom:20px}
-    .orders-note p{margin:5px 0 0}
-    .order-meta{line-height:1.8;overflow-wrap:anywhere}
-    .order-item{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eadfd9}
-    .order-item span{overflow-wrap:anywhere}
-    .order-item strong{white-space:nowrap}
-    .orders-status{display:inline-block;background:#fff0d6;color:#855600;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:700;margin:5px 5px 12px 0}
-    .status-confirmed,.status-delivered,.payment-paid{background:#e6f7eb;color:#206c36}
-    .status-shipped{background:#e7f1ff;color:#2056a0}
-    .status-cancelled,.payment-rejected{background:#ffe8e8;color:#a52222}
-    .orders-button{display:inline-block;padding:11px 18px;background:#e94f83;color:white;border:0;border-radius:7px;text-decoration:none;cursor:pointer;margin:10px 10px 0 0;font:inherit}
-    .orders-button:disabled{opacity:.6;cursor:not-allowed}
-    .orders-message{overflow-wrap:anywhere;white-space:pre-wrap;line-height:1.7}
-    .orders-total{font-size:19px;font-weight:700;color:#8b3155;border-top:1px solid #eadfd9;padding-top:12px}
-    .delivery-box,.payment-box{background:#fff5f8;border:1px solid #f3d8e2;border-radius:9px;padding:13px 15px;margin-top:18px}
-    .delivery-box h3,.payment-box h3{margin:0 0 10px;color:#8b3155}
-    .delivery-box p,.payment-box p{margin:7px 0;line-height:1.7}
-    .delivery-label{font-weight:700}
-    .tracking-value{font-weight:700;overflow-wrap:anywhere;word-break:break-word}
-    .tracking-pending{color:#855600;font-weight:600}
-    .payment-box label{display:block;font-weight:600;margin:12px 0 6px}
-    .payment-box input,.payment-box select{width:100%;padding:12px;border:1px solid #d9cfc5;border-radius:8px;background:white;font:inherit;color:#302821}
-    .payment-help{font-size:14px;color:#776d64;line-height:1.7}
-    .deadline-warning{background:#fff0d6;color:#855600;padding:11px;border-radius:8px;line-height:1.7}
-    .deadline-expired{background:#ffe8e8;color:#a52222;padding:11px;border-radius:8px;line-height:1.7}
-    .inline-message{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6;margin-top:10px}
-    @media(max-width:650px){.orders-page{padding-top:25px}.orders-card{padding:16px}.order-item{font-size:14px}}
-  </style></head><body>
-  <div class="announcement">Discover your next favourite bag ✨</div>  <header class="header">
-    <a href="./index.html" class="brand-logo">
-      <img src="./IMG-20261021-WA0000.jpg" alt="MINHA Ladies Bag Logo" width="48" height="48">
-      <span class="brand-name">MINHA<small>LADIES BAG</small></span>
-    </a><button class="menu-toggle" id="menuToggle" type="button" aria-label="Toggle navigation" aria-expanded="false">☰</button>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Orders | Minha Ladies Bag</title>
 
-<nav class="nav" id="mainNav">
-  <a href="./index.html">Home</a>
-  <a href="./products.html">Shop</a>
-  <a href="./about.html">Our Story</a>
-  <a href="./contact.html">Contact</a>
-  <a href="./faq.html">FAQs</a>
-  <a href="./my-orders.html">My Orders</a>
-</nav>
+  <link rel="stylesheet" href="style.css">
 
-<a href="./cart.html" class="cart-link">Bag <span class="cart-count" id="cartCount">0</span></a>
+  <style>
+    .orders-page {
+      max-width: 950px;
+      margin: 35px auto;
+      padding: 0 16px 40px;
+    }
 
-  </header>  <main class="orders-page">
-    <div class="orders-heading">
-      <span class="eyebrow">YOUR PURCHASES</span>
-      <h1>My Orders</h1>
-      <p>View your orders, payment instructions and delivery status.</p>
-    </div><div class="orders-note">
-  <strong>Order Confirmation Notice</strong>
-  <p>
-    Place your order first. The seller will review it and set the
-    delivery fee. If online payment is requested, pay within the
-    displayed 30-minute deadline after confirmation. COD orders
-    do not require advance payment.
-  </p>
-</div>
+    .orders-heading {
+      text-align: center;
+      margin-bottom: 25px;
+    }
 
-<p id="ordersMessage" class="orders-message" role="status" aria-live="polite">Connecting to your account...</p>
-<div id="ordersList"></div>
+    .orders-heading h1 {
+      margin-bottom: 8px;
+    }
 
-<a class="orders-button" href="./products.html">Continue Shopping</a>
-<button class="orders-button" id="refreshOrders" type="button">Refresh Orders</button>
+    .orders-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
 
-  </main>  <footer class="footer">
-    <div class="footer-bottom">
-      <p>© <span id="currentYear">2026</span> Minha Ladies Bag. All rights reserved.</p>
+    .orders-message {
+      padding: 14px;
+      border-radius: 10px;
+      background: #f0e6da;
+      margin: 15px 0;
+      text-align: center;
+      overflow-wrap: anywhere;
+    }
+
+    .order-card {
+      background: #fff;
+      border: 1px solid #eadfd3;
+      border-radius: 15px;
+      padding: 20px;
+      margin-bottom: 22px;
+      box-shadow: 0 5px 18px rgba(48, 40, 33, .06);
+      overflow-wrap: anywhere;
+    }
+
+    .order-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #eee4da;
+    }
+
+    .order-top h2 {
+      font-size: 19px;
+      margin: 0 0 6px;
+    }
+
+    .order-date {
+      font-size: 13px;
+      color: #766b61;
+    }
+
+    .status-pill {
+      display: inline-block;
+      border-radius: 20px;
+      padding: 6px 11px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #f0e6da;
+      color: #814438;
+      text-transform: capitalize;
+    }
+
+    .order-section {
+      margin-top: 18px;
+    }
+
+    .order-section h3 {
+      font-size: 16px;
+      margin-bottom: 10px;
+    }
+
+    .order-items {
+      padding-left: 20px;
+      margin: 8px 0;
+    }
+
+    .order-items li {
+      margin-bottom: 8px;
+    }
+
+    .order-info {
+      line-height: 1.8;
+      font-size: 14px;
+    }
+
+    .total-box {
+      background: #faf7f2;
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 15px;
+    }
+
+    .total-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 7px 0;
+    }
+
+    .grand-total {
+      border-top: 1px solid #ded0c2;
+      padding-top: 10px;
+      margin-top: 10px;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    .delivery-box,
+    .payment-box {
+      background: #faf7f2;
+      border: 1px solid #eadfd3;
+      border-radius: 11px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+
+    .payment-box h3,
+    .delivery-box h3 {
+      margin-top: 0;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      margin: 12px 0 6px;
+    }
+
+    .order-field {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 11px 12px;
+      border: 1px solid #d8c8b8;
+      border-radius: 8px;
+      background: #fff;
+      color: #302821;
+      font: inherit;
+    }
+
+    .payment-help {
+      font-size: 13px;
+      line-height: 1.7;
+      color: #65594f;
+      overflow-wrap: anywhere;
+    }
+
+    .payment-deadline {
+      font-weight: 700;
+      color: #814438;
+    }
+
+    .primary-action {
+      width: 100%;
+      border: 0;
+      border-radius: 9px;
+      padding: 12px 16px;
+      margin-top: 14px;
+      background: #a65f50;
+      color: #fff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .primary-action:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+
+    .secondary-action {
+      border: 1px solid #a65f50;
+      border-radius: 8px;
+      padding: 10px 16px;
+      background: #fff;
+      color: #814438;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 600px) {
+      .order-card {
+        padding: 15px;
+      }
+
+      .orders-page {
+        margin-top: 24px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html">Minha Ladies Bag</a>
+
+      <button
+        type="button"
+        class="menu-toggle"
+        id="menuToggle"
+        aria-label="Toggle navigation"
+        aria-expanded="false"
+      >☰</button>
+
+      <nav class="main-nav" id="mainNav">
+        <a href="index.html">Home</a>
+        <a href="products.html">Products</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="faq.html">FAQs</a>
+        <a href="my-orders.html" aria-current="page">My Orders</a>
+        <a href="cart.html">Cart</a>
+      </nav>
     </div>
-  </footer>  <script src="./script.js"></script>  <script type="module">
+  </header>
+
+  <main class="orders-page">
+    <div class="orders-heading">
+      <h1>My Orders</h1>
+      <p>Track your orders, delivery details and payment status.</p>
+    </div>
+
+    <div class="orders-actions">
+      <button type="button" id="refreshOrders" class="secondary-action">
+        Refresh Orders
+      </button>
+    </div>
+
+    <div id="ordersMessage" class="orders-message" role="status">
+      Loading your orders...
+    </div>
+
+    <div id="ordersList"></div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>© <span id="currentYear"></span> Minha Ladies Bag. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+
+  <script type="module">
     import { auth, db } from "./firebase-config.js";
 
     import {
@@ -99,435 +285,468 @@
       deleteField
     } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
-    const message = document.getElementById("ordersMessage");
-    const list = document.getElementById("ordersList");
+    const ordersList = document.getElementById("ordersList");
+    const ordersMessage = document.getElementById("ordersMessage");
     const refreshButton = document.getElementById("refreshOrders");
 
     let currentUid = null;
     let authReady = false;
     let loading = false;
-    let loadAgain = false;
-    let signingIn = false;
+    let paymentSettings = {};
+    let refreshRequested = false;
 
-    let paymentSettings = null;
-    let paymentSettingsLoaded = false;
+    const money = value =>
+      "৳" + Number(value || 0).toLocaleString("en-BD", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
 
-    const paymentNames = {
-      pending: "Not selected yet",
-      cod: "Cash on Delivery",
-      bkash: "bKash",
-      nagad: "Nagad",
-      rocket: "Rocket"
-    };
-
-    function money(value) {
-      const amount = Number(value);
-      return "৳" + (Number.isFinite(amount) ? amount : 0).toLocaleString("en-BD");
+    function safeText(value) {
+      return String(value ?? "");
     }
 
-    function text(value, fallback = "") {
-      return value === undefined || value === null || value === ""
-        ? fallback
-        : String(value);
+    function escapeHTML(value) {
+      return safeText(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      })[char]);
     }
 
-    function el(tag, className = "", value = undefined) {
-      const node = document.createElement(tag);
-      if (className) node.className = className;
-      if (value !== undefined) node.textContent = value;
-      return node;
+    function formatDate(timestamp) {
+      if (!timestamp) return "Date unavailable";
+
+      const date = typeof timestamp.toDate === "function"
+        ? timestamp.toDate()
+        : new Date(timestamp);
+
+      if (Number.isNaN(date.getTime())) return "Date unavailable";
+
+      return date.toLocaleString("en-BD", {
+        dateStyle: "medium",
+        timeStyle: "short"
+      });
     }
 
-    function formatDate(value) {
-      const date = toDate(value);
-      return date ? date.toLocaleString("en-BD") : "Date not available";
+    function deadlineDate(order) {
+      if (!order.paymentDeadline) return null;
+
+      const value = typeof order.paymentDeadline.toDate === "function"
+        ? order.paymentDeadline.toDate()
+        : new Date(order.paymentDeadline);
+
+      return Number.isNaN(value.getTime()) ? null : value;
     }
 
-    function toDate(value) {
-      if (value && typeof value.toDate === "function") return value.toDate();
-      if (typeof value === "string" || typeof value === "number") {
-        const date = new Date(value);
-        return Number.isNaN(date.getTime()) ? null : date;
-      }
-      return null;
-    }
-
-    function millis(value) {
-      const date = toDate(value);
-      return date ? date.getTime() : 0;
-    }
-
-    function statusText(value) {
-      return text(value, "pending")
-        .trim()
-        .replace(/[_-]+/g, " ")
-        .replace(/\s+/g, " ")
-        .toUpperCase();
-    }
-
-    function statusClass(value) {
-      const status = text(value, "pending").toLowerCase().replace(/[_\s]+/g, "-");
-      if (status === "confirmed") return "orders-status status-confirmed";
-      if (status === "delivered") return "orders-status status-delivered";
-      if (status === "shipped") return "orders-status status-shipped";
-      if (status === "cancelled" || status === "canceled") return "orders-status status-cancelled";
-      return "orders-status";
-    }
-
-    function paymentClass(value) {
-      const status = text(value, "unpaid").toLowerCase();
-      if (status === "paid") return "orders-status payment-paid";
-      if (status === "rejected") return "orders-status payment-rejected";
-      return "orders-status";
-    }
-
-    function addMeta(card, label, value) {
-      const p = el("p", "order-meta");
-      p.append(el("strong", "", label + ": "), document.createTextNode(value));
-      card.appendChild(p);
+    function showMessage(message) {
+      ordersMessage.textContent = message;
+      ordersMessage.classList.remove("hidden");
     }
 
     async function loadPaymentSettings() {
       try {
-        const snapshot = await getDoc(doc(db, "settings", "payment"));
-        paymentSettings = snapshot.exists() ? snapshot.data() : {};
-        paymentSettingsLoaded = true;
+        const snap = await getDoc(doc(db, "settings", "payment"));
+        paymentSettings = snap.exists() ? snap.data() : {};
       } catch (error) {
-        console.error("Payment settings error:", error);
+        console.warn("Payment settings could not be loaded:", error);
         paymentSettings = {};
-        paymentSettingsLoaded = false;
       }
     }
 
-    function addPaymentForm(card, order) {
-      const box = el("section", "payment-box");
-      box.appendChild(el("h3", "", "Choose Payment Method"));
+    function paymentMethodLabel(method) {
+      const labels = {
+        pending: "Not selected yet",
+        cod: "Cash on Delivery",
+        bkash: "bKash",
+        nagad: "Nagad",
+        rocket: "Rocket"
+      };
 
-      const intro = el("p", "payment-help",
-        "Choose Cash on Delivery or submit online payment details after paying the displayed final total.");
-      box.appendChild(intro);
+      return labels[method] || safeText(method || "Not selected");
+    }
 
-      const selectLabel = el("label", "", "Payment method");
-      const select = el("select");
-      select.innerHTML = `
-        <option value="cod">Cash on Delivery</option>
-        <option value="bkash">bKash</option>
-        <option value="nagad">Nagad</option>
-        <option value="rocket">Rocket</option>
-      `;
-      select.value = ["cod", "bkash", "nagad", "rocket"].includes(order.paymentMethod)
-        ? order.paymentMethod
-        : "cod";
+    function paymentStatusLabel(status) {
+      const labels = {
+        unpaid: "Unpaid",
+        unverified: "Waiting for admin verification",
+        paid: "Paid",
+        failed: "Payment failed",
+        refunded: "Refunded"
+      };
 
-      selectLabel.appendChild(select);
-      box.appendChild(selectLabel);
+      return labels[status] || safeText(status || "Unpaid");
+    }
 
-      const numberInfo = el("div");
-      const onlineFields = el("div");
-      const senderLabel = el("label", "", "Sender mobile number");
-      const senderInput = el("input");
-      senderInput.type = "tel";
-      senderInput.maxLength = 25;
-      senderInput.autocomplete = "tel";
-      senderInput.placeholder = "Number used to send payment";
-      senderInput.value = text(order.senderPhone);
+    function createPaymentForm(order, card) {
+      const method = order.paymentMethod || "pending";
+      const status = order.paymentStatus || "unpaid";
+      const deadline = deadlineDate(order);
 
-      const txnLabel = el("label", "", "Transaction ID (TXN ID)");
-      const txnInput = el("input");
-      txnInput.type = "text";
-      txnInput.maxLength = 120;
-      txnInput.autocomplete = "off";
-      txnInput.placeholder = "Enter the transaction ID";
-      txnInput.value = text(order.transactionId);
-
-      onlineFields.append(senderLabel, senderInput, txnLabel, txnInput);
-      box.appendChild(numberInfo);
-      box.appendChild(onlineFields);
-
-      const result = el("p", "inline-message");
-      result.setAttribute("role", "status");
-      box.appendChild(result);
-
-      const submit = el("button", "orders-button", "Save Payment Choice");
-      submit.type = "button";
-      box.appendChild(submit);
-
-      function updatePaymentFields() {
-        const method = select.value;
-        onlineFields.style.display = method === "cod" ? "none" : "block";
-        numberInfo.replaceChildren();
-
-        if (method !== "cod") {
-          const number = text(paymentSettings?.[method + "Number"]).trim();
-          const label = paymentNames[method];
-
-          if (number) {
-            numberInfo.appendChild(el("p", "", `${label} payment number: ${number}`));
-          } else {
-            numberInfo.appendChild(el("p", "deadline-warning",
-              `${label} payment number has not been configured yet. Please contact the seller before sending money.`));
-          }
-
-          if (!paymentSettingsLoaded) {
-            numberInfo.appendChild(el("p", "payment-help",
-              "Payment account settings could not be loaded. Refresh or contact the seller."));
-          }
-        }
-
-        submit.textContent = method === "cod"
-          ? "Confirm Cash on Delivery"
-          : "Submit Payment Details";
+      if (
+        order.status !== "confirmed" ||
+        ["cancelled", "delivered"].includes(order.status) ||
+        status === "paid"
+      ) {
+        return;
       }
 
-      select.addEventListener("change", updatePaymentFields);
+      const box = document.createElement("section");
+      box.className = "payment-box";
+
+      const heading = document.createElement("h3");
+      heading.textContent = "Payment";
+      box.appendChild(heading);
+
+      if (status === "unverified") {
+        const info = document.createElement("p");
+        info.className = "payment-help";
+        info.textContent =
+          "Your transaction details have been submitted. Please wait for admin verification.";
+        box.appendChild(info);
+        card.appendChild(box);
+        return;
+      }
+
+      if (method !== "pending" && method !== "cod") {
+        const info = document.createElement("p");
+        info.className = "payment-help";
+        info.textContent =
+          "Online payment method already selected. If you have not submitted payment details, contact the store before paying again.";
+        box.appendChild(info);
+        card.appendChild(box);
+        return;
+      }
+
+      if (method === "cod") {
+        const info = document.createElement("p");
+        info.className = "payment-help";
+        info.textContent =
+          "Cash on Delivery selected. Pay the order amount according to the store's delivery instructions.";
+        box.appendChild(info);
+      }
+
+      const form = document.createElement("form");
+      form.innerHTML = `
+        <label class="field-label" for="method-${escapeHTML(order.id)}">
+          Choose payment method
+        </label>
+        <select class="order-field" id="method-${escapeHTML(order.id)}" name="method" required>
+          <option value="cod" ${method === "cod" ? "selected" : ""}>Cash on Delivery</option>
+          <option value="bkash">bKash</option>
+          <option value="nagad">Nagad</option>
+          <option value="rocket">Rocket</option>
+        </select>
+
+        <div class="online-fields hidden">
+          <p class="payment-help account-instructions"></p>
+          <label class="field-label">Sender mobile number</label>
+          <input class="order-field" name="senderPhone" type="tel"
+            maxlength="20" autocomplete="tel" placeholder="Number used to send payment">
+
+          <label class="field-label">Transaction ID (TrxID)</label>
+          <input class="order-field" name="transactionId" type="text"
+            maxlength="100" placeholder="Enter transaction ID">
+          <p class="payment-help deadline-text"></p>
+        </div>
+
+        <button class="primary-action" type="submit">Save Payment Choice</button>
+      `;
+
+      const methodSelect = form.elements.method;
+      const onlineFields = form.querySelector(".online-fields");
+      const accountInstructions = form.querySelector(".account-instructions");
+      const deadlineText = form.querySelector(".deadline-text");
+      const senderInput = form.elements.senderPhone;
+      const transactionInput = form.elements.transactionId;
+
+      function updatePaymentFields() {
+        const selected = methodSelect.value;
+        const isOnline = selected !== "cod";
+
+        onlineFields.classList.toggle("hidden", !isOnline);
+        senderInput.required = isOnline;
+        transactionInput.required = isOnline;
+
+        const accountKey = {
+          bkash: "bkashNumber",
+          nagad: "nagadNumber",
+          rocket: "rocketNumber"
+        }[selected];
+
+        const accountNumber = paymentSettings[accountKey];
+
+        accountInstructions.textContent = accountNumber
+          ? `Send the order amount to the store's ${paymentMethodLabel(selected)} number: ${accountNumber}. Then enter your sender number and TrxID.`
+          : `The store's ${paymentMethodLabel(selected)} number is not available here yet. Contact the store before sending money.`;
+
+        if (deadline) {
+          deadlineText.textContent =
+            `Payment deadline: ${deadline.toLocaleString("en-BD")}`;
+        } else {
+          deadlineText.textContent =
+            "Payment deadline has not been set yet. Contact the store before making an online payment.";
+        }
+
+        const button = form.querySelector("button[type='submit']");
+        button.disabled = isOnline && (!accountNumber || !deadline || deadline.getTime() < Date.now());
+      }
+
+      methodSelect.addEventListener("change", updatePaymentFields);
       updatePaymentFields();
 
-      submit.addEventListener("click", async () => {
-        if (submit.disabled) return;
+      form.addEventListener("submit", async event => {
+        event.preventDefault();
 
-        const user = auth.currentUser;
-        if (!user || user.uid !== order.ownerUid) {
-          result.textContent = "Your account could not be verified. Refresh this page.";
+        if (!currentUid) {
+          alert("Please wait for your account to load.");
           return;
         }
 
-        if (order.status !== "confirmed") {
-          result.textContent = "This order is no longer awaiting payment selection.";
-          return;
-        }
+        const selected = methodSelect.value;
+        const isOnline = selected !== "cod";
+        const senderPhone = senderInput.value.trim();
+        const transactionId = transactionInput.value.trim();
 
-        if (text(order.paymentStatus).toLowerCase() === "paid") {
-          result.textContent = "This order is already marked as paid.";
-          return;
-        }
+        if (isOnline) {
+          const accountKey = {
+            bkash: "bkashNumber",
+            nagad: "nagadNumber",
+            rocket: "rocketNumber"
+          }[selected];
 
-        const method = select.value;
-        const updates = {};
-
-        if (method === "cod") {
-          updates.paymentMethod = "cod";
-          updates.paymentStatus = "unpaid";
-          updates.senderPhone = deleteField();
-          updates.transactionId = deleteField();
-        } else {
-          const deadline = toDate(order.paymentDeadline);
-
-          if (!deadline) {
-            result.textContent = "The seller has not set a payment deadline. Please contact the seller.";
+          if (!paymentSettings[accountKey]) {
+            alert("The store's payment number is not configured. Contact the store.");
             return;
           }
 
-          if (Date.now() > deadline.getTime()) {
-            result.textContent = "The payment deadline has expired. Contact the seller to confirm whether this order can still be paid.";
+          if (!deadline || deadline.getTime() < Date.now()) {
+            alert("The payment deadline has expired or has not been set. Contact the store.");
             return;
           }
-
-          if (!paymentSettingsLoaded || !text(paymentSettings?.[method + "Number"]).trim()) {
-            result.textContent = "The seller's payment number is unavailable. Please contact the seller before paying.";
-            return;
-          }
-
-          const senderPhone = senderInput.value.trim();
-          const transactionId = txnInput.value.trim();
 
           if (!senderPhone || !transactionId) {
-            result.textContent = "Enter both the sender mobile number and transaction ID.";
+            alert("Enter both sender number and transaction ID.");
             return;
           }
-
-          updates.paymentMethod = method;
-          updates.paymentStatus = "unverified";
-          updates.senderPhone = senderPhone;
-          updates.transactionId = transactionId;
         }
 
-        submit.disabled = true;
-        result.textContent = "Saving...";
+        const submitButton = form.querySelector("button[type='submit']");
+        submitButton.disabled = true;
+        submitButton.textContent = "Saving...";
 
         try {
-          await updateDoc(doc(db, "orders", order.id), updates);
+          const orderRef = doc(db, "orders", order.id);
+          const latest = await getDoc(orderRef);
 
-          result.textContent = method === "cod"
-            ? "Cash on Delivery selected. No advance payment is required. The seller will update your order."
-            : "Payment details submitted. The seller must verify the transaction before marking it as paid.";
+          if (!latest.exists()) {
+            throw new Error("This order could not be found.");
+          }
+
+          const latestOrder = latest.data();
+
+          if (latestOrder.ownerUid !== currentUid) {
+            throw new Error("You cannot update another customer's order.");
+          }
+
+          if (latestOrder.status !== "confirmed") {
+            throw new Error("The admin must confirm this order first.");
+          }
+
+          if (latestOrder.paymentStatus === "paid" ||
+              latestOrder.paymentStatus === "unverified") {
+            throw new Error("Payment has already been submitted or verified.");
+          }
+
+          const updateData = isOnline
+            ? {
+                paymentMethod: selected,
+                paymentStatus: "unverified",
+                senderPhone,
+                transactionId
+              }
+            : {
+                paymentMethod: "cod",
+                paymentStatus: "unpaid",
+                senderPhone: deleteField(),
+                transactionId: deleteField()
+              };
+
+          await updateDoc(orderRef, updateData);
+
+          alert(isOnline
+            ? "Payment details submitted. Wait for admin verification."
+            : "Cash on Delivery selected.");
 
           await loadOrders();
         } catch (error) {
-          console.error("Payment choice update error:", error);
-          result.textContent =
-            "Could not save your choice: " + (error.message || "Please try again.") +
-            (error.code ? "\nError code: " + error.code : "");
-        } finally {
-          submit.disabled = false;
+          console.error("Payment update failed:", error);
+          alert(error.message || "Could not save payment choice. Please try again.");
+          submitButton.disabled = false;
+          submitButton.textContent = "Save Payment Choice";
         }
       });
 
+      box.appendChild(form);
       card.appendChild(box);
     }
 
     function renderOrder(order) {
-      const card = el("article", "orders-card");
-      card.appendChild(el("h2", "", "Order #" + order.id));
-      card.appendChild(el("p", "order-meta", "Order date: " + formatDate(order.createdAt)));
+      const card = document.createElement("article");
+      card.className = "order-card";
 
-      card.appendChild(el("span", statusClass(order.status),
-        "Order Status: " + statusText(order.status)));
-
-      const method = text(order.paymentMethod, "pending").toLowerCase();
-      const paymentStatus = text(order.paymentStatus, "unpaid").toLowerCase();
-
-      addMeta(card, "Payment Method", paymentNames[method] || method);
-      card.appendChild(el("span", paymentClass(paymentStatus),
-        "Payment: " + statusText(paymentStatus)));
-
-      card.appendChild(el("h3", "", "Items"));
       const items = Array.isArray(order.items) ? order.items : [];
+      const subtotal = Number(order.total || 0);
+      const deliveryFee = Number(order.deliveryFee || 0);
+      const grandTotal = order.grandTotal != null
+        ? Number(order.grandTotal)
+        : subtotal + deliveryFee;
 
-      if (!items.length) {
-        card.appendChild(el("p", "order-meta", "No item details available."));
-      }
+      const itemHTML = items.length
+        ? items.map(item => {
+            const name = escapeHTML(item.name || "Product");
+            const quantity = Number(item.quantity || item.qty || 1);
+            const price = Number(item.price || 0);
+            const lineTotal = item.subtotal != null
+              ? Number(item.subtotal)
+              : price * quantity;
 
-      items.forEach(item => {
-        const row = el("div", "order-item");
-        const quantity = Number(item?.quantity ?? item?.qty ?? 1);
-        const price = Number(item?.price ?? item?.unitPrice ?? 0);
-        const explicitTotal = item?.subtotal ?? item?.lineTotal;
-        const total = explicitTotal != null ? Number(explicitTotal) : price * quantity;
+            return `<li>
+              <strong>${name}</strong><br>
+              ${money(price)} × ${quantity} = ${money(lineTotal)}
+            </li>`;
+          }).join("")
+        : "<li>Order item details are unavailable.</li>";
 
-        row.append(
-          el("span", "", text(item?.name || item?.productName, "Ladies Bag") + " × " + quantity),
-          el("strong", "", money(total))
-        );
-        card.appendChild(row);
-      });
+      const statusText = escapeHTML(order.status || "pending");
+      const paymentMethod = escapeHTML(paymentMethodLabel(order.paymentMethod));
+      const paymentStatus = escapeHTML(paymentStatusLabel(order.paymentStatus));
+      const deadline = deadlineDate(order);
 
-      const subtotal = Number(order.total ?? 0);
-      const deliveryFee = Number(order.deliveryFee ?? 0);
-      const grandTotal = Number(order.grandTotal ?? (subtotal + deliveryFee));
+      card.innerHTML = `
+        <div class="order-top">
+          <div>
+            <h2>Order #${escapeHTML(order.id)}</h2>
+            <div class="order-date">Placed: ${escapeHTML(formatDate(order.createdAt))}</div>
+          </div>
+          <span class="status-pill">${statusText}</span>
+        </div>
 
-      addMeta(card, "Subtotal", money(subtotal));
-      addMeta(card, "Delivery Fee", money(deliveryFee));
-      card.appendChild(el("p", "orders-total", "Final Total: " + money(grandTotal)));
-      addMeta(card, "Delivery Address", text(order.address, "Not available"));
+        <section class="order-section">
+          <h3>Items Ordered</h3>
+          <ul class="order-items">${itemHTML}</ul>
 
-      const deadline = toDate(order.paymentDeadline);
-      const isConfirmed = text(order.status).toLowerCase() === "confirmed";
-      const isCOD = method === "cod";
-      const isPaid = paymentStatus === "paid";
-      const isCancelled = ["cancelled", "canceled"].includes(text(order.status).toLowerCase());
+          <div class="total-box">
+            <div class="total-row">
+              <span>Subtotal</span>
+              <strong>${money(subtotal)}</strong>
+            </div>
+            <div class="total-row">
+              <span>Delivery Fee</span>
+              <strong>${money(deliveryFee)}</strong>
+            </div>
+            <div class="total-row grand-total">
+              <span>Grand Total</span>
+              <strong>${money(grandTotal)}</strong>
+            </div>
+          </div>
+        </section>
 
-      if (isConfirmed && !isCOD && !isPaid && !isCancelled) {
-        if (deadline) {
-          if (Date.now() <= deadline.getTime()) {
-            card.appendChild(el("p", "deadline-warning",
-              "Online payment deadline: " + deadline.toLocaleString("en-BD") +
-              ". Please complete payment within 30 minutes of confirmation."));
-          } else {
-            card.appendChild(el("p", "deadline-expired",
-              "The online payment deadline has expired. Contact the seller to confirm whether the order can still be accepted. Do not send money without confirmation."));
+        <section class="order-section">
+          <h3>Customer & Delivery Details</h3>
+          <div class="order-info">
+            <strong>Name:</strong> ${escapeHTML(order.customerName || "—")}<br>
+            <strong>Phone:</strong> ${escapeHTML(order.phone || "—")}<br>
+            <strong>Address:</strong> ${escapeHTML(order.address || "—")}
+          </div>
+        </section>
+
+        <section class="delivery-box">
+          <h3>Delivery Tracking</h3>
+          <div class="order-info">
+            <strong>Status:</strong> ${statusText}<br>
+            <strong>Courier:</strong> ${escapeHTML(order.courierName || "Not assigned yet")}<br>
+            <strong>Tracking Number:</strong> ${escapeHTML(order.trackingNumber || "Not available yet")}
+          </div>
+        </section>
+
+        <section class="order-section">
+          <h3>Payment Status</h3>
+          <div class="order-info">
+            <strong>Method:</strong> ${paymentMethod}<br>
+            <strong>Status:</strong> ${paymentStatus}
+          </div>
+          ${
+            deadline && order.status === "confirmed" &&
+            order.paymentStatus !== "paid"
+              ? `<p class="payment-help payment-deadline">Payment deadline: ${escapeHTML(deadline.toLocaleString("en-BD"))}</p>`
+              : ""
           }
-        } else {
-          card.appendChild(el("p", "deadline-warning",
-            "Payment deadline has not been set. Please contact the seller."));
-        }
-      }
+        </section>
+      `;
 
-      if (isConfirmed && !isPaid && !isCancelled) {
-        addPaymentForm(card, order);
-      } else if (isCOD) {
-        card.appendChild(el("p", "payment-help",
-          "Cash on Delivery selected. No advance payment deadline applies."));
-      }
-
-      const deliveryBox = el("section", "delivery-box");
-      deliveryBox.appendChild(el("h3", "", "🚚 Courier & Tracking Details"));
-
-      const courierName = text(order.courierName).trim();
-      const trackingNumber = text(order.trackingNumber).trim();
-
-      const courier = el("p");
-      courier.append(el("span", "delivery-label", "Courier Name: "),
-        document.createTextNode(courierName || "Not assigned yet"));
-      if (!courierName) courier.classList.add("tracking-pending");
-      deliveryBox.appendChild(courier);
-
-      const tracking = el("p");
-      tracking.append(
-        el("span", "delivery-label", "Tracking Number: "),
-        el("span", trackingNumber ? "tracking-value" : "tracking-pending",
-          trackingNumber || "Not available yet")
-      );
-      deliveryBox.appendChild(tracking);
-
-      if (!courierName && !trackingNumber) {
-        deliveryBox.appendChild(el("p", "order-meta",
-          "Courier information will appear here after the shop updates your order."));
-      }
-
-      card.appendChild(deliveryBox);
-      list.appendChild(card);
+      createPaymentForm(order, card);
+      return card;
     }
 
     async function loadOrders() {
-      if (!authReady || !currentUid) return;
-
-      if (loading) {
-        loadAgain = true;
+      if (!authReady || !currentUid || loading) {
+        refreshRequested = true;
         return;
       }
 
       loading = true;
+      refreshRequested = false;
       refreshButton.disabled = true;
-      message.textContent = "Loading your orders...";
-      list.replaceChildren();
+      ordersList.replaceChildren();
+      showMessage("Loading your orders...");
 
       try {
-        const uid = currentUid;
-
         await loadPaymentSettings();
 
         const ordersQuery = query(
           collection(db, "orders"),
-          where("ownerUid", "==", uid)
+          where("ownerUid", "==", currentUid)
         );
 
         const snapshot = await getDocs(ordersQuery);
 
-        if (!auth.currentUser || auth.currentUser.uid !== uid || currentUid !== uid) {
-          message.textContent = "Account changed. Reconnecting...";
-          return;
-        }
-
-        const orders = snapshot.docs.map(item => ({
-          id: item.id,
-          ...item.data()
+        const orders = snapshot.docs.map(orderDoc => ({
+          id: orderDoc.id,
+          ...orderDoc.data()
         }));
 
-        orders.sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
+        orders.sort((a, b) => {
+          const aTime = a.createdAt?.toMillis?.() || 0;
+          const bTime = b.createdAt?.toMillis?.() || 0;
+          return bTime - aTime;
+        });
 
         if (!orders.length) {
-          message.textContent =
-            "No orders were found for this browser account. If you placed an order in another browser or cleared browser data, it may belong to a different anonymous account.";
+          showMessage(
+            "No orders were found for this browser account. If you ordered before, use the same browser and account you used when placing that order."
+          );
           return;
         }
 
-        orders.forEach(renderOrder);
-        message.textContent = "You have " + orders.length +
-          (orders.length === 1 ? " order." : " orders.");
+        ordersMessage.classList.add("hidden");
 
+        for (const order of orders) {
+          ordersList.appendChild(renderOrder(order));
+        }
       } catch (error) {
-        console.error("My Orders loading error:", error);
-        message.textContent =
-          "Could not load your orders.\n" +
-          (error.message || "Please try again.") +
-          (error.code ? "\nError code: " + error.code : "");
+        console.error("Could not load orders:", error);
+        showMessage(
+          "Could not load orders. Check your internet connection and Firebase Firestore Rules, then try Refresh Orders."
+        );
       } finally {
         loading = false;
         refreshButton.disabled = false;
 
-        if (loadAgain) {
-          loadAgain = false;
-          await loadOrders();
+        if (refreshRequested) {
+          refreshRequested = false;
+          loadOrders();
         }
       }
     }
@@ -535,32 +754,24 @@
     refreshButton.addEventListener("click", loadOrders);
 
     onAuthStateChanged(auth, async user => {
-      if (!user) {
-        authReady = false;
-        currentUid = null;
-
-        if (signingIn) return;
-
-        signingIn = true;
-        message.textContent = "Connecting your browser account...";
-
-        try {
+      try {
+        if (!user) {
+          authReady = false;
+          showMessage("Connecting to your customer account...");
           await signInAnonymously(auth);
-        } catch (error) {
-          console.error("Anonymous sign-in error:", error);
-          message.textContent =
-            "Could not connect to your browser account.\n" +
-            (error.message || "Please reload and try again.") +
-            (error.code ? "\nError code: " + error.code : "");
-        } finally {
-          signingIn = false;
+          return;
         }
-        return;
-      }
 
-      currentUid = user.uid;
-      authReady = true;
-      await loadOrders();
+        currentUid = user.uid;
+        authReady = true;
+        await loadOrders();
+      } catch (error) {
+        console.error("Authentication failed:", error);
+        showMessage(
+          "Could not connect to your customer account. Refresh the page and try again."
+        );
+      }
     });
-  </script></body>
+  </script>
+</body>
 </html>

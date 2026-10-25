@@ -15,36 +15,56 @@ import {
   doc,
   getDoc,
   setDoc,
-  serverTimestamp,
-  Timestamp
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
+/* =========================================
+   MINHA LADIES BAG — ADMIN DASHBOARD
+========================================= */
+
 const ADMIN_UID = "utwqpe1ozLNCFKivDm6LKQonNM62";
+
 const PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 
-const loginForm = document.getElementById("loginForm");
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const loginButton = document.getElementById("loginButton");
-const loginScreen = document.getElementById("loginScreen");
-const dashboard = document.getElementById("dashboard");
-const loginMessage = document.getElementById("loginMessage");
-
-let editingId = null;
-let productsCache = [];
-let ordersCache = [];
-let savingSettings = false;
-let savingProduct = false;
-let loadingOrders = false;
-let loadingProducts = false;
-let refreshingDashboard = false;
-
 const ORDER_STATUSES = [
-  "pending", "confirmed", "processing",
-  "shipped", "delivered", "cancelled"
+  "pending",
+  "confirmed",
+  "processing",
+  "shipped",
+  "delivered",
+  "cancelled"
 ];
 
-const PAYMENT_STATUSES = ["unpaid", "unverified", "paid"];
+const PAYMENT_STATUSES = [
+  "unpaid",
+  "pending",
+  "paid",
+  "failed",
+  "refunded"
+];
+
+const STATUS_COLORS = {
+  pending: "#d9a441",
+  confirmed: "#4d8ed6",
+  processing: "#9575cd",
+  shipped: "#2598a5",
+  delivered: "#32976b",
+  cancelled: "#d85b5b"
+};
+
+let productsCache = [];
+let ordersCache = [];
+let paymentSettings = {};
+let editingProductId = null;
+let loading = false;
+
+/* =========================================
+   HELPERS
+========================================= */
+
+function $(id) {
+  return document.getElementById(id);
+}
 
 function safe(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -58,50 +78,32 @@ function safe(value) {
 
 function money(value) {
   const amount = Number(value);
-
-  return Number.isFinite(amount)
-    ? "৳" + amount.toLocaleString("en-BD", {
-        maximumFractionDigits: 2
-      })
-    : "—";
+  return "৳" + (Number.isFinite(amount) ? amount : 0).toLocaleString("en-BD");
 }
 
-function showMessage(text) {
-  const box = document.getElementById("panelMessage");
+function showMessage(message, isError = false) {
+  const el = $("message");
 
-  if (box) {
-    box.textContent = text;
-  } else if (loginMessage) {
-    loginMessage.textContent = text;
-  }
-}
+  if (!el) return;
 
-function isAdmin() {
-  return Boolean(
-    auth.currentUser &&
-    auth.currentUser.uid === ADMIN_UID
-  );
-}
-
-function requireAdmin() {
-  if (isAdmin()) return true;
-
-  showMessage("Unauthorized. Please log in as the admin.");
-  return false;
+  el.textContent = message;
+  el.style.color = isError ? "#c0392b" : "#27734a";
 }
 
 function formatDate(value) {
-  if (!value) return "Not set";
+  if (!value) return "—";
 
   let date;
 
   if (typeof value.toDate === "function") {
     date = value.toDate();
+  } else if (typeof value === "number") {
+    date = new Date(value);
   } else {
     date = new Date(value);
   }
 
-  if (Number.isNaN(date.getTime())) return "Not set";
+  if (Number.isNaN(date.getTime())) return "—";
 
   return date.toLocaleString("en-BD", {
     dateStyle: "medium",
@@ -109,875 +111,573 @@ function formatDate(value) {
   });
 }
 
-function timestampMillis(value) {
-  if (!value) return 0;
-
-  if (typeof value.toMillis === "function") {
-    return value.toMillis();
-  }
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+function formatStatus(value) {
+  return String(value || "pending")
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, char => char.toUpperCase());
 }
 
-function getOrderItems(items) {
-  if (Array.isArray(items)) return items;
+function isAdmin(user) {
+  return Boolean(user && user.uid === ADMIN_UID);
+}
 
-  if (items && typeof items === "object") {
-    return Object.values(items);
+function requireAdmin() {
+  if (!isAdmin(auth.currentUser)) {
+    throw new Error("Unauthorized. Please sign in with the admin account.");
   }
+}
 
-  if (items) return [{ name: String(items) }];
-
+function getOrderItems(order) {
+  if (Array.isArray(order.items)) return order.items;
+  if (Array.isArray(order.cartItems)) return order.cartItems;
+  if (Array.isArray(order.products)) return order.products;
   return [];
 }
 
-function renderOrderItems(items) {
-  const normalized = getOrderItems(items);
+function getOrderSubtotal(order) {
+  const subtotal = Number(
+    order.subtotal ??
+    order.total ??
+    order.amount ??
+    0
+  );
 
-  if (!normalized.length) {
-    return '<p class="help-text">No item details available.</p>';
+  return Number.isFinite(subtotal) ? subtotal : 0;
+}
+
+function getDeliveryFee(order) {
+  const fee = Number(order.deliveryFee ?? 0);
+  return Number.isFinite(fee) ? fee : 0;
+}
+
+function getOrderTotal(order) {
+  if (order.grandTotal != null) {
+    const total = Number(order.grandTotal);
+    if (Number.isFinite(total)) return total;
   }
 
-  return `
-    <div class="order-items-list">
-      ${normalized.map((item, index) => {
-        if (!item || typeof item !== "object") {
-          return `
-            <div class="order-item">
-              ${safe(item ?? "Product")}
-            </div>
-          `;
-        }
-
-        const name =
-          item.name ||
-          item.productName ||
-          item.title ||
-          item.product ||
-          "Product";
-
-        const quantity = Number(item.quantity ?? item.qty ?? 1);
-        const price = Number(item.price ?? item.unitPrice);
-        const explicitTotal = item.subtotal ?? item.lineTotal;
-
-        const lineTotal = explicitTotal != null
-          ? Number(explicitTotal)
-          : price * quantity;
-
-        return `
-          <div class="order-item">
-            <strong>${safe(name)}</strong>
-            <p>Item #${index + 1}</p>
-            <p>Quantity: ${safe(quantity)}</p>
-            <p>Unit price: ${safe(money(price))}</p>
-            ${Number.isFinite(lineTotal)
-              ? `<p>Item total: <strong>${safe(money(lineTotal))}</strong></p>`
-              : ""}
-          </div>
-        `;
-      }).join("")}
-    </div>
-  `;
+  return getOrderSubtotal(order) + getDeliveryFee(order);
 }
 
-function paymentMethodLabel(method) {
-  return ({
-    pending: "Not chosen yet",
-    cod: "Cash on Delivery",
-    bkash: "bKash",
-    nagad: "Nagad",
-    rocket: "Rocket"
-  })[method] || method || "Not specified";
+function getPaymentMethod(order) {
+  return order.paymentMethod ||
+    order.payment ||
+    order.paymentType ||
+    "Not specified";
 }
 
-function paymentStatusLabel(status) {
-  return ({
-    unpaid: "Unpaid",
-    unverified: "Awaiting verification",
-    paid: "Paid",
-    failed: "Failed",
-    refunded: "Refunded"
-  })[status] || status || "Unpaid";
+function getPaymentStatus(order) {
+  return String(order.paymentStatus || "unpaid").toLowerCase();
+}
+
+function getOrderStatus(order) {
+  return String(order.status || "pending").toLowerCase();
+}
+
+function getCustomerName(order) {
+  return order.customerName ||
+    order.name ||
+    order.fullName ||
+    "Customer";
+}
+
+function getCustomerPhone(order) {
+  return order.phone ||
+    order.customerPhone ||
+    order.mobile ||
+    "—";
+}
+
+function getCustomerAddress(order) {
+  return order.address ||
+    order.deliveryAddress ||
+    order.customerAddress ||
+    "—";
+}
+
+function getTransactionId(order) {
+  return order.transactionId ||
+    order.txnId ||
+    order.transactionID ||
+    "";
 }
 
 function statusClass(status) {
-  const allowed = [
-    ...ORDER_STATUSES,
-    ...PAYMENT_STATUSES,
-    "failed"
-  ];
+  if (["paid", "delivered", "confirmed"].includes(status)) {
+    return "success";
+  }
 
-  return allowed.includes(status) ? status : "pending";
+  if (["pending", "processing", "shipped"].includes(status)) {
+    return "warning";
+  }
+
+  if (["failed", "cancelled", "refunded"].includes(status)) {
+    return "danger";
+  }
+
+  return "";
 }
 
-function statusOptions(options, selected, labels = {}) {
+function makeOptions(options, current) {
   return options.map(value => `
     <option value="${safe(value)}"
-      ${value === selected ? "selected" : ""}>
-      ${safe(labels[value] || value.charAt(0).toUpperCase() + value.slice(1))}
+      ${value === current ? "selected" : ""}>
+      ${safe(formatStatus(value))}
     </option>
   `).join("");
 }
 
-function showLogin() {
-  loginScreen.classList.remove("hidden");
-  dashboard.classList.add("hidden");
+function imageMarkup(url, name) {
+  if (!url) {
+    return `<div class="product-image"
+      style="display:grid;place-items:center;font-size:22px">👜</div>`;
+  }
+
+  return `
+    <img
+      class="product-image"
+      src="${safe(url)}"
+      alt="${safe(name)}"
+      loading="lazy"
+      onerror="this.style.display='none'"
+    >
+  `;
 }
 
+/* =========================================
+   LOGIN / LOGOUT
+========================================= */
+
+function showLogin() {
+  $("loginScreen")?.classList.remove("hidden");
+  $("adminApp")?.classList.add("hidden");
+  $("dashboard")?.classList.add("hidden");
+}
+
+function showApp() {
+  $("loginScreen")?.classList.add("hidden");
+  $("adminApp")?.classList.remove("hidden");
+  $("dashboard")?.classList.remove("hidden");
+}
+
+$("loginForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+
+  const button = $("loginButton");
+  const email = $("email")?.value.trim();
+  const password = $("password")?.value;
+
+  if (!email || !password) {
+    showMessage("Please enter your email and password.", true);
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Signing in…";
+  showMessage("");
+
+  try {
+    const result = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    if (!isAdmin(result.user)) {
+      await signOut(auth);
+      showMessage(
+        "Access denied. This account is not the authorized admin.",
+        true
+      );
+      return;
+    }
+
+    showMessage("Login successful.");
+  } catch (error) {
+    console.error("Admin login error:", error);
+
+    const messages = {
+      "auth/invalid-credential": "Incorrect email or password.",
+      "auth/invalid-email": "Please enter a valid email address.",
+      "auth/user-not-found": "Admin account was not found.",
+      "auth/wrong-password": "Incorrect password.",
+      "auth/too-many-requests": "Too many attempts. Try again later.",
+      "auth/network-request-failed": "Network error. Check your internet."
+    };
+
+    showMessage(
+      messages[error.code] || "Login failed: " + error.message,
+      true
+    );
+  } finally {
+    button.disabled = false;
+    button.textContent = "Sign in to dashboard";
+  }
+});
+
+$("logoutButton")?.addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+  } catch (error) {
+    console.error(error);
+    alert("Could not log out. Please try again.");
+  }
+});
+
+/* =========================================
+   DASHBOARD MARKUP
+========================================= */
+
 function showDashboard() {
-  if (!isAdmin()) {
-    showLogin();
-    return;
-  }
+  requireAdmin();
+  showApp();
 
-  loginScreen.classList.add("hidden");
-  dashboard.classList.remove("hidden");
+  $("dashboard").innerHTML = `
+    <section id="overview" class="section-anchor">
 
-  if (dashboard.dataset.ready === "yes") {
-    refreshAll();
-    return;
-  }
-
-  dashboard.dataset.ready = "yes";
-
-  dashboard.innerHTML = `
-    <div class="app-layout">
-
-      <aside class="sidebar" id="adminSidebar">
-        <div class="sidebar-brand">
-          <strong>MINHA</strong>
-          <small>LADIES BAG · ADMIN</small>
+      <div class="page-heading">
+        <div>
+          <h1>Store Overview</h1>
+          <p>
+            Welcome to Minha Ladies Bag. Manage your
+            inventory, orders and payments from here.
+          </p>
         </div>
 
-        <div class="sidebar-label">Workspace</div>
+        <button id="refreshDashboard"
+          class="btn btn-secondary" type="button">
+          ↻ Refresh data
+        </button>
+      </div>
 
-        <nav class="side-nav" aria-label="Admin navigation">
-          <button type="button" class="active" data-section="overview">
-            <span class="side-icon">⌂</span> Dashboard
-          </button>
+      <div class="stats-grid">
 
-          <button type="button" data-section="productsSection">
-            <span class="side-icon">▣</span> Products
-          </button>
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">Total Products</span>
+            <span class="stat-icon">👜</span>
+          </div>
+          <div class="stat-value" id="statProducts">—</div>
+          <div class="stat-note">All products in your store</div>
+        </article>
 
-          <button type="button" data-section="ordersSection">
-            <span class="side-icon">▤</span> Orders
-          </button>
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">Active Products</span>
+            <span class="stat-icon">✓</span>
+          </div>
+          <div class="stat-value" id="statActive">—</div>
+          <div class="stat-note">Products marked active</div>
+        </article>
 
-          <button type="button" data-section="paymentSection">
-            <span class="side-icon">৳</span> Payments
-          </button>
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">Total Orders</span>
+            <span class="stat-icon">▤</span>
+          </div>
+          <div class="stat-value" id="statOrders">—</div>
+          <div class="stat-note">Orders currently recorded</div>
+        </article>
 
-          <button type="button" data-section="settingsSection">
-            <span class="side-icon">⚙</span> Settings
-          </button>
-        </nav>
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">Pending Orders</span>
+            <span class="stat-icon">◷</span>
+          </div>
+          <div class="stat-value" id="statPending">—</div>
+          <div class="stat-note">Orders awaiting action</div>
+        </article>
 
-        <div class="sidebar-spacer"></div>
+      </div>
 
-        <div class="sidebar-footer">
-          <strong>Minha Ladies Bag</strong><br>
-          Store Management
+      <div class="stats-grid">
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">Paid Revenue</span>
+            <span class="stat-icon">৳</span>
+          </div>
+          <div class="stat-value" id="statRevenue">৳0</div>
+          <div class="stat-note">
+            Total recorded value of orders marked paid
+          </div>
+        </article>
+
+        <article class="stat-card">
+          <div class="stat-top">
+            <span class="stat-label">Delivered Orders</span>
+            <span class="stat-icon">✓</span>
+          </div>
+          <div class="stat-value" id="statDelivered">—</div>
+          <div class="stat-note">Orders marked delivered</div>
+        </article>
+
+      </div>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Order Status Overview</h2>
+            <p class="panel-description">
+              Distribution of orders by their current status.
+            </p>
+          </div>
         </div>
-      </aside>
 
-      <main class="main-area">
-        <header class="topbar">
-          <div style="display:flex;align-items:center;gap:10px;min-width:0">
-            <button id="mobileMenuButton"
-              class="mobile-menu-button"
-              type="button"
-              aria-label="Open navigation">☰</button>
+        <div class="chart-layout">
 
-            <div>
-              <h1 id="pageTitle">Dashboard</h1>
-              <p id="pageSubtitle">Your store at a glance</p>
-            </div>
+          <div class="chart-wrap">
+            <canvas id="orderStatusChart"
+              width="320" height="320"
+              aria-label="Order status pie chart">
+            </canvas>
           </div>
 
-          <div class="topbar-right">
-            <div class="admin-avatar" aria-label="Admin account">M</div>
-            <button id="logoutButton" class="logout-button" type="button">
-              Logout
-            </button>
-          </div>
-        </header>
-
-        <p id="panelMessage" role="status" aria-live="polite"></p>
-
-        <section id="overview">
-          <div class="stats-grid">
-
-            <article class="stat-card">
-              <div class="stat-top">
-                <span>Total Products</span>
-                <span class="stat-icon">▣</span>
-              </div>
-              <div class="stat-value" id="statProducts">—</div>
-              <div class="stat-note">Products in inventory</div>
-            </article>
-
-            <article class="stat-card">
-              <div class="stat-top">
-                <span>Total Orders</span>
-                <span class="stat-icon">▤</span>
-              </div>
-              <div class="stat-value" id="statOrders">—</div>
-              <div class="stat-note">Orders recorded in Firestore</div>
-            </article>
-
-            <article class="stat-card">
-              <div class="stat-top">
-                <span>Paid Revenue</span>
-                <span class="stat-icon">৳</span>
-              </div>
-              <div class="stat-value" id="statRevenue">—</div>
-              <div class="stat-note">Orders marked as paid</div>
-            </article>
-
-            <article class="stat-card">
-              <div class="stat-top">
-                <span>Pending Orders</span>
-                <span class="stat-icon">◷</span>
-              </div>
-              <div class="stat-value" id="statPending">—</div>
-              <div class="stat-note">Awaiting further action</div>
-            </article>
-
+          <div id="chartLegend" class="chart-legend">
+            <div class="empty-state">Loading chart…</div>
           </div>
 
-          <div class="content-grid">
-            <article class="panel-card">
-              <div class="panel-heading">
-                <div>
-                  <h2>Revenue Overview</h2>
-                  <p>Monthly revenue from orders marked paid</p>
-                </div>
-              </div>
+        </div>
+      </section>
 
-              <div class="chart-wrap">
-                <svg id="revenueChart"
-                  viewBox="0 0 520 190"
-                  role="img"
-                  aria-label="Monthly paid revenue chart">
-                  <text x="15" y="30" fill="#8993a4" font-size="12">
-                    Loading revenue data...
-                  </text>
-                </svg>
-              </div>
+    </section>
 
-              <div class="chart-legend">
-                <span><i class="legend-dot"></i>Paid revenue</span>
-              </div>
-            </article>
+    <section id="products" class="section-anchor panel">
 
-            <article class="panel-card">
-              <div class="panel-heading">
-                <div>
-                  <h2>Order Overview</h2>
-                  <p>Current order status breakdown</p>
-                </div>
-              </div>
+      <div class="panel-heading">
+        <div>
+          <h2>Product Management</h2>
+          <p class="panel-description">
+            Add new bags, update prices, manage stock and remove products.
+          </p>
+        </div>
+      </div>
 
-              <div class="status-list" id="orderOverview">
-                <p class="help-text">Loading order statistics...</p>
-              </div>
-            </article>
-          </div>
+      <form id="productForm">
 
-          <article class="panel-card">
-            <div class="section-toolbar">
-              <div>
-                <h2>Recent Orders</h2>
-                <p class="section-description">
-                  Latest orders saved in your store.
-                </p>
-              </div>
+        <div class="field">
+          <label for="productName">Product name *</label>
+          <input id="productName" required
+            maxlength="150" placeholder="e.g. Elegant Shoulder Bag">
+        </div>
 
-              <button class="secondary-button"
-                type="button" data-section="ordersSection">
-                View All Orders
-              </button>
-            </div>
+        <div class="field">
+          <label for="productPrice">Price (BDT) *</label>
+          <input id="productPrice" type="number"
+            min="0" step="0.01" required placeholder="1200">
+        </div>
 
-            <div id="recentOrders">
-              <p class="help-text">Loading recent orders...</p>
-            </div>
-          </article>
-        </section>
+        <div class="field">
+          <label for="productStock">Stock quantity</label>
+          <input id="productStock" type="number"
+            min="0" step="1" value="0">
+        </div>
 
-        <section class="section-panel" id="productsSection">
-          <article class="panel-card">
-            <div class="section-toolbar">
-              <div>
-                <h2 id="formHeading">Add New Product</h2>
-                <p class="section-description">
-                  Create and manage products displayed in your shop.
-                </p>
-              </div>
-            </div>
+        <div class="field">
+          <label for="productCategory">Category</label>
+          <input id="productCategory"
+            maxlength="100" placeholder="Shoulder Bag">
+        </div>
 
-            <form id="productForm">
-              <div class="form-grid">
-                <div>
-                  <label class="form-label" for="pName">Product Name *</label>
-                  <input class="dashboard-field" id="pName"
-                    maxlength="120" required>
-                </div>
+        <div class="field">
+          <label for="productImage">Product image URL</label>
+          <input id="productImage" type="url"
+            placeholder="https://example.com/bag.jpg">
+        </div>
 
-                <div>
-                  <label class="form-label" for="pPrice">Price (৳) *</label>
-                  <input class="dashboard-field" id="pPrice"
-                    type="number" min="0" step="1" required>
-                </div>
+        <div class="field">
+          <label for="productDescription">Description</label>
+          <textarea id="productDescription"
+            maxlength="3000"
+            placeholder="Product details..."></textarea>
+        </div>
 
-                <div>
-                  <label class="form-label" for="pStock">Stock Quantity *</label>
-                  <input class="dashboard-field" id="pStock"
-                    type="number" min="0" step="1" required>
-                </div>
+        <div class="field">
+          <label for="productActive">Product visibility</label>
+          <select id="productActive">
+            <option value="true">Active — visible to customers</option>
+            <option value="false">Inactive — hidden from customers</option>
+          </select>
+        </div>
 
-                <div>
-                  <label class="form-label" for="pCategory">Category</label>
-                  <input class="dashboard-field" id="pCategory">
-                </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button id="saveProductButton" class="btn" type="submit">
+            Save product
+          </button>
 
-                <div class="full-width">
-                  <label class="form-label" for="pImage">Image URL *</label>
-                  <input class="dashboard-field" id="pImage"
-                    type="url" placeholder="https://..." required>
-                </div>
+          <button id="cancelEditButton"
+            class="btn btn-secondary hidden" type="button">
+            Cancel edit
+          </button>
+        </div>
 
-                <div class="full-width">
-                  <label class="form-label" for="pDescription">Description</label>
-                  <textarea class="dashboard-field"
-                    id="pDescription" rows="3"></textarea>
-                </div>
-              </div>
+        <p id="productMessage" class="status-message" aria-live="polite"></p>
 
-              <label class="checkbox-row">
-                <input id="pActive" type="checkbox" checked>
-                Show this product on the website
-              </label>
+      </form>
 
-              <div class="form-actions">
-                <button class="primary-button" id="saveProduct" type="submit">
-                  Save Product
-                </button>
+      <div style="height:1px;background:var(--border);margin:25px 0"></div>
 
-                <button class="secondary-button" id="cancelEdit"
-                  type="button" hidden>Cancel Edit</button>
-              </div>
-            </form>
-          </article>
+      <div class="panel-heading">
+        <div>
+          <h2>Store Inventory</h2>
+          <p class="panel-description">
+            All products currently stored in Firestore.
+          </p>
+        </div>
 
-          <article class="panel-card">
-            <div class="section-toolbar">
-              <h2>Product Inventory</h2>
-              <button id="refreshProducts"
-                class="secondary-button" type="button">
-                Refresh Products
-              </button>
-            </div>
+        <button id="reloadProducts"
+          class="btn btn-secondary" type="button">
+          Refresh
+        </button>
+      </div>
 
-            <div id="productsList" class="admin-list">
-              <p class="empty-state">Loading products...</p>
-            </div>
-          </article>
-        </section>
+      <div id="productsList">
+        <div class="empty-state">Loading products…</div>
+      </div>
 
-        <section class="section-panel" id="ordersSection">
-          <article class="panel-card">
-            <div class="section-toolbar">
-              <div>
-                <h2>Customer Orders</h2>
-                <p class="section-description">
-                  Manage delivery charges, courier details, order status,
-                  and payment verification.
-                </p>
-              </div>
+    </section>
 
-              <button id="refreshOrders"
-                class="secondary-button" type="button">
-                Refresh Orders
-              </button>
-            </div>
+    <section id="orders" class="section-anchor panel">
 
-            <div id="ordersList">
-              <p class="empty-state">Loading orders...</p>
-            </div>
-          </article>
-        </section>
+      <div class="panel-heading">
+        <div>
+          <h2>Order Management</h2>
+          <p class="panel-description">
+            Update delivery, order status and manual payment verification.
+          </p>
+        </div>
 
-        <section class="section-panel" id="paymentSection">
-          <article class="panel-card">
-            <div>
-              <h2>Payment Settings</h2>
-              <p class="section-description">
-                Configure the receiving numbers supplied by the store owner.
-              </p>
-            </div>
+        <button id="reloadOrders"
+          class="btn btn-secondary" type="button">
+          Refresh orders
+        </button>
+      </div>
 
-            <form id="paymentSettingsForm">
-              <div class="form-grid">
-                <div>
-                  <label class="form-label" for="bkashNumber">bKash Number</label>
-                  <input class="dashboard-field" id="bkashNumber"
-                    type="tel" maxlength="25">
-                </div>
+      <div class="field">
+        <label for="orderSearch">Search orders</label>
+        <input id="orderSearch"
+          placeholder="Order ID, customer name or phone">
+      </div>
 
-                <div>
-                  <label class="form-label" for="nagadNumber">Nagad Number</label>
-                  <input class="dashboard-field" id="nagadNumber"
-                    type="tel" maxlength="25">
-                </div>
+      <p class="panel-description">
+        Delete is permanent. Review an order before confirming deletion.
+      </p>
 
-                <div>
-                  <label class="form-label" for="rocketNumber">Rocket Number</label>
-                  <input class="dashboard-field" id="rocketNumber"
-                    type="tel" maxlength="25">
-                </div>
-              </div>
+      <div id="ordersList">
+        <div class="empty-state">Loading orders…</div>
+      </div>
 
-              <button class="primary-button" id="savePaymentSettings"
-                type="submit" style="margin-top:18px">
-                Save Payment Numbers
-              </button>
-            </form>
-          </article>
-        </section>
+    </section>
 
-        <section class="section-panel" id="settingsSection">
-          <article class="panel-card">
-            <h2>Store Settings</h2>
-            <p class="section-description">
-              Store information and administration.
-            </p>
+    <section id="paymentSettings"
+      class="section-anchor panel">
 
-            <p class="help-text">
-              Signed in as the authorized Firebase administrator.
-              Product, order and payment changes are saved in Firestore.
-            </p>
+      <div class="panel-heading">
+        <div>
+          <h2>Payment Settings</h2>
+          <p class="panel-description">
+            Set the merchant numbers customers use for manual payments.
+          </p>
+        </div>
+      </div>
 
-            <button class="secondary-button" id="settingsRefresh"
-              type="button">Refresh Dashboard Data</button>
-          </article>
-        </section>
+      <form id="paymentSettingsForm">
 
-      </main>
-    </div>
+        <div class="field">
+          <label for="bkashNumber">bKash number</label>
+          <input id="bkashNumber"
+            type="tel" maxlength="30"
+            placeholder="01XXXXXXXXX">
+        </div>
+
+        <div class="field">
+          <label for="nagadNumber">Nagad number</label>
+          <input id="nagadNumber"
+            type="tel" maxlength="30"
+            placeholder="01XXXXXXXXX">
+        </div>
+
+        <div class="field">
+          <label for="rocketNumber">Rocket number</label>
+          <input id="rocketNumber"
+            type="tel" maxlength="30"
+            placeholder="01XXXXXXXXX">
+        </div>
+
+        <button id="savePaymentSettings"
+          class="btn" type="submit">
+          Save payment settings
+        </button>
+
+        <p id="paymentSettingsMessage"
+          class="status-message" aria-live="polite"></p>
+
+      </form>
+
+      <div style="margin-top:20px;padding:14px;border-radius:10px;background:var(--surface-soft);color:var(--muted);font-size:12px;line-height:1.8">
+        Manual payment numbers are displayed for customer payment.
+        Verify each transaction independently before marking it paid.
+      </div>
+
+    </section>
+
+    <footer style="padding:10px 0 25px;color:var(--muted);font-size:11px;text-align:center">
+      Minha Ladies Bag · Store Administration
+    </footer>
   `;
 
-  document.getElementById("logoutButton").addEventListener("click", async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      showMessage("Logout failed: " + error.message);
-    }
-  });
+  $("refreshDashboard").addEventListener("click", refreshAll);
+  $("reloadProducts").addEventListener("click", loadProducts);
+  $("reloadOrders").addEventListener("click", loadOrders);
 
-  document.getElementById("mobileMenuButton").addEventListener("click", () => {
-    document.getElementById("adminSidebar").classList.toggle("open");
-  });
+  $("productForm").addEventListener("submit", saveProduct);
+  $("cancelEditButton").addEventListener("click", resetProductForm);
 
-  dashboard.querySelectorAll("[data-section]").forEach(button => {
-    button.addEventListener("click", () => {
-      const id = button.dataset.section;
-      const target = document.getElementById(id);
+  $("ordersList").addEventListener("click", handleOrderAction);
+  $("ordersList").addEventListener("change", handleOrderChange);
+  $("productsList").addEventListener("click", handleProductAction);
 
-      if (!target) return;
+  $("orderSearch").addEventListener("input", renderOrders);
 
-      if (id === "overview") {
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      } else {
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
+  $("paymentSettingsForm").addEventListener(
+    "submit",
+    savePaymentSettings
+  );
 
-      dashboard.querySelectorAll(".side-nav button").forEach(item => {
-        item.classList.toggle("active", item.dataset.section === id);
+  document.querySelectorAll(".nav-link, .mobile-nav a").forEach(link => {
+    link.addEventListener("click", () => {
+      document.querySelectorAll(".nav-link").forEach(item => {
+        item.classList.toggle("active", item.getAttribute("href") === link.getAttribute("href"));
       });
-
-      const titles = {
-        overview: ["Dashboard", "Your store at a glance"],
-        productsSection: ["Products", "Manage your product inventory"],
-        ordersSection: ["Orders", "Manage orders and delivery"],
-        paymentSection: ["Payments", "Payment numbers and verification"],
-        settingsSection: ["Settings", "Store administration"]
-      };
-
-      document.getElementById("pageTitle").textContent =
-        (titles[id] || titles.overview)[0];
-
-      document.getElementById("pageSubtitle").textContent =
-        (titles[id] || titles.overview)[1];
-
-      document.getElementById("adminSidebar").classList.remove("open");
     });
-  });
-
-  document.getElementById("paymentSettingsForm")
-    .addEventListener("submit", savePaymentSettings);
-
-  document.getElementById("productForm")
-    .addEventListener("submit", saveProduct);
-
-  document.getElementById("cancelEdit")
-    .addEventListener("click", resetForm);
-
-  document.getElementById("refreshProducts")
-    .addEventListener("click", loadProducts);
-
-  document.getElementById("refreshOrders")
-    .addEventListener("click", loadOrders);
-
-  document.getElementById("settingsRefresh")
-    .addEventListener("click", refreshAll);
-
-  document.getElementById("productsList").addEventListener("click", async event => {
-    const button = event.target.closest("button[data-action]");
-
-    if (!button || !requireAdmin()) return;
-
-    const product = productsCache.find(item => item.id === button.dataset.id);
-    if (!product) return;
-
-    if (button.dataset.action === "edit") {
-      editingId = product.id;
-
-      document.getElementById("formHeading").textContent = "Edit Product";
-      document.getElementById("pName").value = product.name || "";
-      document.getElementById("pPrice").value = product.price ?? 0;
-      document.getElementById("pStock").value = product.stock ?? 0;
-      document.getElementById("pImage").value = product.imageUrl || "";
-      document.getElementById("pCategory").value = product.category || "";
-      document.getElementById("pDescription").value = product.description || "";
-      document.getElementById("pActive").checked = product.active === true;
-      document.getElementById("saveProduct").textContent = "Update Product";
-      document.getElementById("cancelEdit").hidden = false;
-
-      document.getElementById("productForm").scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-      });
-    }
-
-    if (button.dataset.action === "delete") {
-      if (!confirm(`Delete "${product.name}"? This cannot be undone.`)) return;
-
-      button.disabled = true;
-
-      try {
-        await deleteDoc(doc(db, "products", product.id));
-        showMessage("Product deleted successfully.");
-        await loadProducts();
-      } catch (error) {
-        console.error("Delete product error:", error);
-        showMessage("Delete failed: " + error.message);
-      } finally {
-        button.disabled = false;
-      }
-    }
-  });
-
-  document.getElementById("ordersList").addEventListener("click", async event => {
-    const button = event.target.closest("button[data-save-order]");
-    if (!button || !requireAdmin()) return;
-
-    const id = button.dataset.saveOrder;
-    const feeInput = document.getElementById("fee-" + id);
-    const courierInput = document.getElementById("courier-" + id);
-    const trackingInput = document.getElementById("tracking-" + id);
-    const statusInput = document.getElementById("status-" + id);
-    const paymentInput = document.getElementById("payment-" + id);
-
-    if (!feeInput || !courierInput || !trackingInput ||
-        !statusInput || !paymentInput) {
-      showMessage("Order fields missing. Refresh orders and try again.");
-      return;
-    }
-
-    const deliveryFee = Number(feeInput.value);
-    const courierName = courierInput.value.trim();
-    const trackingNumber = trackingInput.value.trim();
-    const status = statusInput.value;
-    const paymentStatus = paymentInput.value;
-
-    if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
-      showMessage("Delivery fee must be zero or a positive number.");
-      return;
-    }
-
-    if (!ORDER_STATUSES.includes(status) ||
-        !PAYMENT_STATUSES.includes(paymentStatus)) {
-      showMessage("Invalid order or payment status.");
-      return;
-    }
-
-    if (paymentStatus === "paid") {
-      const currentOrder = ordersCache.find(order => order.id === id);
-
-      if (currentOrder?.paymentStatus !== "paid" &&
-          !confirm("Have you verified the transaction in the receiving account?")) {
-        return;
-      }
-    }
-
-    const originalText = button.textContent;
-    button.disabled = true;
-    button.textContent = "Saving...";
-
-    try {
-      const orderRef = doc(db, "orders", id);
-      const snapshot = await getDoc(orderRef);
-
-      if (!snapshot.exists()) {
-        throw new Error("This order no longer exists.");
-      }
-
-      const order = snapshot.data();
-      const subtotal = Number(order.total);
-
-      if (!Number.isFinite(subtotal) || subtotal < 0) {
-        throw new Error("The order subtotal is invalid.");
-      }
-
-      const changes = {
-        deliveryFee,
-        grandTotal: subtotal + deliveryFee,
-        courierName,
-        trackingNumber,
-        status,
-        paymentStatus,
-        updatedAt: serverTimestamp()
-      };
-
-      if (status === "confirmed" && !order.confirmedAt) {
-        changes.confirmedAt = serverTimestamp();
-      }
-
-      if (
-        status === "confirmed" &&
-        order.paymentMethod !== "cod" &&
-        !order.paymentDeadline
-      ) {
-        changes.paymentRequestedAt = serverTimestamp();
-        changes.paymentDeadline = Timestamp.fromDate(
-          new Date(Date.now() + PAYMENT_WINDOW_MS)
-        );
-      }
-
-      if (paymentStatus === "paid" && order.paymentStatus !== "paid") {
-        changes.paidAt = serverTimestamp();
-      }
-
-      if (status === "cancelled" && order.status !== "cancelled") {
-        changes.cancelledAt = serverTimestamp();
-      }
-
-      if (order.paymentStatus === "paid" && paymentStatus !== "paid") {
-        if (!confirm("This order is already marked Paid. Change the status?")) {
-          return;
-        }
-      }
-
-      await updateDoc(orderRef, changes);
-
-      showMessage("Order details saved successfully.");
-      await loadOrders();
-    } catch (error) {
-      console.error("Order update error:", error);
-      showMessage("Order update failed: " + error.message);
-      alert("Order update failed:\n" + error.message);
-    } finally {
-      button.disabled = false;
-      button.textContent = originalText;
-    }
   });
 
   refreshAll();
 }
 
+/* =========================================
+   LOAD DATA
+========================================= */
+
 async function refreshAll() {
-  if (!requireAdmin() || refreshingDashboard) return;
+  requireAdmin();
 
-  refreshingDashboard = true;
+  await Promise.all([
+    loadProducts(),
+    loadOrders(),
+    loadPaymentSettings()
+  ]);
 
-  try {
-    await Promise.all([
-      loadPaymentSettings(),
-      loadProducts(),
-      loadOrders()
-    ]);
-  } finally {
-    refreshingDashboard = false;
-  }
-}
-
-async function loadPaymentSettings() {
-  if (!requireAdmin()) return;
-
-  const form = document.getElementById("paymentSettingsForm");
-  if (!form) return;
-
-  try {
-    const snapshot = await getDoc(doc(db, "settings", "payment"));
-    const settings = snapshot.exists() ? snapshot.data() : {};
-
-    document.getElementById("bkashNumber").value =
-      settings.bkashNumber || "";
-
-    document.getElementById("nagadNumber").value =
-      settings.nagadNumber || "";
-
-    document.getElementById("rocketNumber").value =
-      settings.rocketNumber || "";
-  } catch (error) {
-    console.error("Load payment settings error:", error);
-    showMessage("Could not load payment settings: " + error.message);
-  }
-}
-
-async function savePaymentSettings(event) {
-  event.preventDefault();
-
-  if (savingSettings || !requireAdmin()) return;
-
-  const bkashNumber = document.getElementById("bkashNumber").value.trim();
-  const nagadNumber = document.getElementById("nagadNumber").value.trim();
-  const rocketNumber = document.getElementById("rocketNumber").value.trim();
-
-  const button = document.getElementById("savePaymentSettings");
-
-  savingSettings = true;
-  button.disabled = true;
-  button.textContent = "Saving...";
-
-  try {
-    await setDoc(doc(db, "settings", "payment"), {
-      bkashNumber,
-      nagadNumber,
-      rocketNumber,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-
-    const check = await getDoc(doc(db, "settings", "payment"));
-
-    if (!check.exists()) {
-      throw new Error("Saved settings could not be verified.");
-    }
-
-    const saved = check.data();
-
-    if (
-      (saved.bkashNumber || "") !== bkashNumber ||
-      (saved.nagadNumber || "") !== nagadNumber ||
-      (saved.rocketNumber || "") !== rocketNumber
-    ) {
-      throw new Error("Saved values do not match the entered numbers.");
-    }
-
-    showMessage("Payment numbers saved successfully.");
-    alert("Payment numbers saved successfully.");
-  } catch (error) {
-    console.error("Payment settings error:", error);
-    showMessage("Could not save payment numbers: " + error.message);
-    alert("Could not save payment numbers:\n" + error.message);
-  } finally {
-    savingSettings = false;
-    button.disabled = false;
-    button.textContent = "Save Payment Numbers";
-  }
-}
-
-function resetForm() {
-  editingId = null;
-
-  document.getElementById("productForm").reset();
-  document.getElementById("pActive").checked = true;
-  document.getElementById("formHeading").textContent = "Add New Product";
-  document.getElementById("saveProduct").textContent = "Save Product";
-  document.getElementById("cancelEdit").hidden = true;
-}
-
-async function saveProduct(event) {
-  event.preventDefault();
-
-  if (savingProduct || !requireAdmin()) return;
-
-  const name = document.getElementById("pName").value.trim();
-  const price = Number(document.getElementById("pPrice").value);
-  const stock = Number(document.getElementById("pStock").value);
-  const imageUrl = document.getElementById("pImage").value.trim();
-
-  if (
-    !name || !imageUrl ||
-    !Number.isFinite(price) ||
-    !Number.isFinite(stock) ||
-    price < 0 || stock < 0
-  ) {
-    showMessage("Check product name, image URL, price and stock.");
-    return;
-  }
-
-  if (!/^https?:\/\//i.test(imageUrl)) {
-    showMessage("Image URL must start with https:// or http://");
-    return;
-  }
-
-  const productData = {
-    name,
-    price,
-    stock,
-    imageUrl,
-    category: document.getElementById("pCategory").value.trim(),
-    description: document.getElementById("pDescription").value.trim(),
-    active: document.getElementById("pActive").checked
-  };
-
-  const button = document.getElementById("saveProduct");
-  const wasEditing = Boolean(editingId);
-  const currentId = editingId;
-
-  savingProduct = true;
-  button.disabled = true;
-  button.textContent = wasEditing ? "Updating..." : "Saving...";
-
-  try {
-    if (wasEditing) {
-      await updateDoc(doc(db, "products", currentId), productData);
-      showMessage("Product updated successfully.");
-    } else {
-      await addDoc(collection(db, "products"), {
-        ...productData,
-        featured: false,
-        discountPrice: 0,
-        createdAt: serverTimestamp()
-      });
-
-      showMessage("Product added successfully.");
-    }
-
-    resetForm();
-    await loadProducts();
-  } catch (error) {
-    console.error("Save product error:", error);
-    showMessage("Product save failed: " + error.message);
-    alert("Product save failed:\n" + error.message);
-  } finally {
-    savingProduct = false;
-    button.disabled = false;
-    button.textContent = editingId ? "Update Product" : "Save Product";
-  }
+  renderStats();
+  drawOrderChart();
 }
 
 async function loadProducts() {
-  const list = document.getElementById("productsList");
+  requireAdmin();
 
-  if (!list || loadingProducts || !isAdmin()) return;
-
-  loadingProducts = true;
-  list.innerHTML = '<p class="empty-state">Loading products...</p>';
+  const container = $("productsList");
+  if (container) container.innerHTML =
+    `<div class="empty-state">Loading products…</div>`;
 
   try {
     const snapshot = await getDocs(collection(db, "products"));
@@ -987,272 +687,24 @@ async function loadProducts() {
       ...item.data()
     }));
 
-    const activeProducts = productsCache.filter(
-      product => product.active === true
-    );
-
-    document.getElementById("statProducts").textContent =
-      productsCache.length.toLocaleString("en-BD");
-
-    if (!productsCache.length) {
-      list.innerHTML = '<p class="empty-state">No products yet. Add your first product above.</p>';
-      return;
-    }
-
-    list.innerHTML = productsCache.map(product => `
-      <article class="item-card">
-        <h3>${safe(product.name || "Unnamed product")}</h3>
-
-        <p><strong>Price:</strong> ${safe(money(product.price))}</p>
-        <p><strong>Stock:</strong> ${safe(product.stock ?? 0)}</p>
-        <p><strong>Category:</strong> ${safe(product.category || "-")}</p>
-        <p><strong>Visibility:</strong>
-          ${product.active === true ? "Visible" : "Hidden"}
-        </p>
-
-        <div class="item-actions">
-          <button class="edit-button" type="button"
-            data-action="edit" data-id="${safe(product.id)}">
-            Edit
-          </button>
-
-          <button class="delete-button" type="button"
-            data-action="delete" data-id="${safe(product.id)}">
-            Delete
-          </button>
-        </div>
-      </article>
-    `).join("");
-
-    showMessage(
-      `${productsCache.length} products loaded (${activeProducts.length} visible).`
-    );
+    renderProducts();
+    renderStats();
   } catch (error) {
-    console.error("Load products error:", error);
-    list.innerHTML = `
-      <p class="empty-state">
-        Could not load products: ${safe(error.message)}
-      </p>
-    `;
-  } finally {
-    loadingProducts = false;
+    console.error("Products load error:", error);
+
+    if (container) {
+      container.innerHTML =
+        `<div class="empty-state">Could not load products. Check Firestore access and connection.</div>`;
+    }
   }
-}
-
-function getOrderSubtotal(order) {
-  const value = Number(order.total);
-  return Number.isFinite(value) && value >= 0 ? value : 0;
-}
-
-function getGrandTotal(order) {
-  if (order.grandTotal != null && Number.isFinite(Number(order.grandTotal))) {
-    return Number(order.grandTotal);
-  }
-
-  return getOrderSubtotal(order) + Math.max(0, Number(order.deliveryFee) || 0);
-}
-
-function updateOrderStatistics() {
-  const total = ordersCache.length;
-
-  const pending = ordersCache.filter(order =>
-    ["pending", "confirmed", "processing"].includes(order.status)
-  ).length;
-
-  const paidOrders = ordersCache.filter(
-    order => order.paymentStatus === "paid"
-  );
-
-  const revenue = paidOrders.reduce(
-    (sum, order) => sum + getGrandTotal(order),
-    0
-  );
-
-  document.getElementById("statOrders").textContent =
-    total.toLocaleString("en-BD");
-
-  document.getElementById("statPending").textContent =
-    pending.toLocaleString("en-BD");
-
-  document.getElementById("statRevenue").textContent = money(revenue);
-
-  renderOrderOverview();
-  renderRevenueChart();
-  renderRecentOrders();
-}
-
-function renderOrderOverview() {
-  const box = document.getElementById("orderOverview");
-  if (!box) return;
-
-  const statuses = [
-    { key: "pending", label: "Pending", color: "orange" },
-    { key: "processing", label: "Processing", color: "" },
-    { key: "shipped", label: "Shipped", color: "green" },
-    { key: "delivered", label: "Delivered", color: "green" },
-    { key: "cancelled", label: "Cancelled", color: "red" }
-  ];
-
-  if (!ordersCache.length) {
-    box.innerHTML = '<p class="help-text">No order statistics available yet.</p>';
-    return;
-  }
-
-  box.innerHTML = statuses.map(item => {
-    const count = ordersCache.filter(order => order.status === item.key).length;
-    const percent = Math.round(count / ordersCache.length * 100);
-
-    return `
-      <div>
-        <div class="status-row">
-          <span>${safe(item.label)}</span>
-          <strong>${count} (${percent}%)</strong>
-        </div>
-
-        <div class="progress-track">
-          <div class="progress-fill ${item.color}"
-            style="width:${percent}%"></div>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-function renderRevenueChart() {
-  const svg = document.getElementById("revenueChart");
-  if (!svg) return;
-
-  const now = new Date();
-  const months = [];
-
-  for (let offset = 5; offset >= 0; offset--) {
-    const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
-
-    months.push({
-      year: date.getFullYear(),
-      month: date.getMonth(),
-      label: date.toLocaleDateString("en", { month: "short" }),
-      value: 0
-    });
-  }
-
-  ordersCache.forEach(order => {
-    if (order.paymentStatus !== "paid") return;
-
-    const time = timestampMillis(order.paidAt || order.createdAt);
-    if (!time) return;
-
-    const date = new Date(time);
-    const bucket = months.find(item =>
-      item.year === date.getFullYear() &&
-      item.month === date.getMonth()
-    );
-
-    if (bucket) bucket.value += getGrandTotal(order);
-  });
-
-  const maxValue = Math.max(...months.map(item => item.value), 1);
-  const chartLeft = 48;
-  const chartRight = 505;
-  const chartTop = 16;
-  const chartBottom = 146;
-  const chartHeight = chartBottom - chartTop;
-  const chartWidth = chartRight - chartLeft;
-
-  const gridLines = [0, 1, 2, 3].map(index => {
-    const y = chartTop + index * chartHeight / 3;
-    const value = maxValue * (1 - index / 3);
-
-    return `
-      <line x1="${chartLeft}" y1="${y}"
-        x2="${chartRight}" y2="${y}"
-        stroke="#e9edf4" stroke-dasharray="3 4"/>
-
-      <text x="${chartLeft - 8}" y="${y + 4}"
-        fill="#8993a4" font-size="9" text-anchor="end">
-        ${safe(value >= 1000
-          ? (value / 1000).toFixed(value >= 10000 ? 0 : 1) + "k"
-          : Math.round(value))}
-      </text>
-    `;
-  }).join("");
-
-  const points = months.map((item, index) => {
-    const x = chartLeft + index * chartWidth / (months.length - 1);
-    const y = chartBottom - (item.value / maxValue) * chartHeight;
-
-    return {
-      x,
-      y,
-      item
-    };
-  });
-
-  const line = points.map((point, index) =>
-    `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`
-  ).join(" ");
-
-  const area = `${line} L ${chartRight} ${chartBottom} L ${chartLeft} ${chartBottom} Z`;
-
-  svg.innerHTML = `
-    ${gridLines}
-
-    <path d="${area}" fill="#0866f5" opacity=".09"></path>
-
-    <path d="${line}" fill="none"
-      stroke="#0866f5" stroke-width="2.5"
-      stroke-linecap="round" stroke-linejoin="round"></path>
-
-    ${points.map(point => `
-      <circle cx="${point.x}" cy="${point.y}" r="3.5"
-        fill="#ffffff" stroke="#0866f5" stroke-width="2">
-        <title>${safe(point.item.label)}: ${safe(money(point.item.value))}</title>
-      </circle>
-
-      <text x="${point.x}" y="169"
-        fill="#8993a4" font-size="10" text-anchor="middle">
-        ${safe(point.item.label)}
-      </text>
-    `).join("")}
-  `;
-}
-
-function renderRecentOrders() {
-  const box = document.getElementById("recentOrders");
-  if (!box) return;
-
-  if (!ordersCache.length) {
-    box.innerHTML = '<p class="empty-state">No customer orders yet.</p>';
-    return;
-  }
-
-  box.innerHTML = ordersCache.slice(0, 5).map(order => `
-    <article class="item-card" style="margin-bottom:10px">
-      <div class="order-card-head">
-        <div>
-          <h3>Order #${safe(order.id)}</h3>
-          <p>${safe(formatDate(order.createdAt))}</p>
-        </div>
-
-        <span class="status-pill ${safe(statusClass(order.status))}">
-          ${safe(order.status || "pending")}
-        </span>
-      </div>
-
-      <p><strong>Customer:</strong> ${safe(order.customerName || "-")}</p>
-      <p><strong>Total:</strong> ${safe(money(getGrandTotal(order)))}</p>
-      <p><strong>Payment:</strong> ${safe(paymentStatusLabel(order.paymentStatus))}</p>
-    </article>
-  `).join("");
 }
 
 async function loadOrders() {
-  const list = document.getElementById("ordersList");
+  requireAdmin();
 
-  if (!list || loadingOrders || !isAdmin()) return;
-
-  loadingOrders = true;
-  list.innerHTML = '<p class="empty-state">Loading orders...</p>';
+  const container = $("ordersList");
+  if (container) container.innerHTML =
+    `<div class="empty-state">Loading orders…</div>`;
 
   try {
     const snapshot = await getDocs(collection(db, "orders"));
@@ -1262,261 +714,870 @@ async function loadOrders() {
       ...item.data()
     }));
 
-    ordersCache.sort((a, b) =>
-      timestampMillis(b.createdAt) - timestampMillis(a.createdAt)
-    );
-
-    updateOrderStatistics();
-
-    if (!ordersCache.length) {
-      list.innerHTML = '<p class="empty-state">No customer orders yet.</p>';
-      return;
-    }
-
-    list.innerHTML = ordersCache.map(order => {
-      const status = ORDER_STATUSES.includes(order.status)
-        ? order.status
-        : "pending";
-
-      const paymentStatus = PAYMENT_STATUSES.includes(order.paymentStatus)
-        ? order.paymentStatus
-        : "unpaid";
-
-      return `
-        <article class="order-card">
-          <div class="order-card-head">
-            <div>
-              <h3>Order #${safe(order.id)}</h3>
-              <p>Created: ${safe(formatDate(order.createdAt))}</p>
-            </div>
-
-            <span class="status-pill ${safe(statusClass(status))}">
-              ${safe(status)}
-            </span>
-          </div>
-
-          <div class="order-details-grid">
-            <div>
-              <span class="detail-label">Customer</span>
-              <span class="detail-value">${safe(order.customerName || "-")}</span>
-            </div>
-
-            <div>
-              <span class="detail-label">Phone</span>
-              <span class="detail-value">${safe(order.phone || "-")}</span>
-            </div>
-
-            <div>
-              <span class="detail-label">Address</span>
-              <span class="detail-value">${safe(order.address || "-")}</span>
-            </div>
-
-            <div>
-              <span class="detail-label">Confirmed</span>
-              <span class="detail-value">${safe(formatDate(order.confirmedAt))}</span>
-            </div>
-          </div>
-
-          <div class="order-box">
-            <h4>Order Items</h4>
-            ${renderOrderItems(order.items)}
-          </div>
-
-          <div class="order-box">
-            <h4>Order Summary</h4>
-
-            <div class="summary-line">
-              <span>Subtotal</span>
-              <strong>${safe(money(order.total))}</strong>
-            </div>
-
-            <div class="summary-line">
-              <span>Delivery Fee</span>
-              <strong>${safe(money(order.deliveryFee ?? 0))}</strong>
-            </div>
-
-            <div class="summary-line total">
-              <span>Grand Total</span>
-              <strong>${safe(money(getGrandTotal(order)))}</strong>
-            </div>
-          </div>
-
-          <div class="order-box">
-            <h4>Payment Verification</h4>
-
-            <p>
-              <span class="detail-label">Payment method</span>
-              <span class="detail-value">${safe(paymentMethodLabel(order.paymentMethod))}</span>
-            </p>
-
-            <p>
-              <span class="detail-label">Payment status</span>
-              <span class="status-pill ${safe(statusClass(paymentStatus))}">
-                ${safe(paymentStatusLabel(paymentStatus))}
-              </span>
-            </p>
-
-            <p>
-              <span class="detail-label">Sender number</span>
-              <span class="detail-value">${safe(order.senderPhone || "Not provided")}</span>
-            </p>
-
-            <p>
-              <span class="detail-label">Transaction ID</span>
-              <span class="detail-value">${safe(order.transactionId || "Not provided")}</span>
-            </p>
-
-            <p>
-              <span class="detail-label">Payment deadline</span>
-              <span class="detail-value">${safe(formatDate(order.paymentDeadline))}</span>
-            </p>
-
-            <label class="form-label" for="payment-${safe(order.id)}">
-              Payment Status
-            </label>
-
-            <select class="dashboard-field" id="payment-${safe(order.id)}">
-              ${statusOptions(PAYMENT_STATUSES, paymentStatus, {
-                unpaid: "Unpaid",
-                unverified: "Awaiting verification",
-                paid: "Paid"
-              })}
-            </select>
-
-            <p class="help-text">
-              Verify the transaction in the receiving account before marking Paid.
-            </p>
-          </div>
-
-          <div class="form-grid">
-            <div>
-              <label class="form-label" for="fee-${safe(order.id)}">
-                Delivery Fee (৳)
-              </label>
-
-              <input class="dashboard-field"
-                id="fee-${safe(order.id)}"
-                type="number" min="0" step="1"
-                value="${safe(order.deliveryFee ?? 0)}">
-            </div>
-
-            <div>
-              <label class="form-label" for="courier-${safe(order.id)}">
-                Courier Name
-              </label>
-
-              <input class="dashboard-field"
-                id="courier-${safe(order.id)}"
-                maxlength="100"
-                value="${safe(order.courierName || "")}">
-            </div>
-
-            <div>
-              <label class="form-label" for="tracking-${safe(order.id)}">
-                Tracking Number
-              </label>
-
-              <input class="dashboard-field"
-                id="tracking-${safe(order.id)}"
-                maxlength="100"
-                value="${safe(order.trackingNumber || "")}">
-            </div>
-
-            <div>
-              <label class="form-label" for="status-${safe(order.id)}">
-                Order Status
-              </label>
-
-              <select class="dashboard-field" id="status-${safe(order.id)}">
-                ${statusOptions(ORDER_STATUSES, status)}
-              </select>
-            </div>
-          </div>
-
-          <p class="help-text">
-            Set the delivery fee before confirming an order.
-            Online payment deadlines are created when an eligible order
-            is confirmed for the first time.
-          </p>
-
-          <button class="primary-button"
-            type="button"
-            data-save-order="${safe(order.id)}"
-            style="width:100%;margin-top:12px">
-            Save Order & Payment Status
-          </button>
-        </article>
-      `;
-    }).join("");
+    renderOrders();
+    renderStats();
+    drawOrderChart();
   } catch (error) {
-    console.error("Load orders error:", error);
+    console.error("Orders load error:", error);
 
-    list.innerHTML = `
-      <p class="empty-state">
-        Could not load orders: ${safe(error.message)}
-      </p>
-    `;
-  } finally {
-    loadingOrders = false;
+    if (container) {
+      container.innerHTML =
+        `<div class="empty-state">Could not load orders. Check Firestore access and connection.</div>`;
+    }
   }
 }
 
-onAuthStateChanged(auth, user => {
-  if (user && user.uid === ADMIN_UID) {
-    showDashboard();
+/* =========================================
+   DASHBOARD STATISTICS
+========================================= */
+
+function renderStats() {
+  const totalProducts = productsCache.length;
+
+  const activeProducts = productsCache.filter(product =>
+    product.active !== false
+  ).length;
+
+  const pendingOrders = ordersCache.filter(order =>
+    ["pending", "confirmed", "processing"].includes(getOrderStatus(order))
+  ).length;
+
+  const deliveredOrders = ordersCache.filter(order =>
+    getOrderStatus(order) === "delivered"
+  ).length;
+
+  const paidRevenue = ordersCache
+    .filter(order => getPaymentStatus(order) === "paid")
+    .reduce((sum, order) => sum + getOrderTotal(order), 0);
+
+  if ($("statProducts")) $("statProducts").textContent = totalProducts;
+  if ($("statActive")) $("statActive").textContent = activeProducts;
+  if ($("statOrders")) $("statOrders").textContent = ordersCache.length;
+  if ($("statPending")) $("statPending").textContent = pendingOrders;
+  if ($("statDelivered")) $("statDelivered").textContent = deliveredOrders;
+  if ($("statRevenue")) $("statRevenue").textContent = money(paidRevenue);
+}
+
+/* =========================================
+   ORDER STATUS PIE CHART
+========================================= */
+
+function drawOrderChart() {
+  const canvas = $("orderStatusChart");
+  const legend = $("chartLegend");
+
+  if (!canvas || !legend) return;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  const counts = {};
+
+  ORDER_STATUSES.forEach(status => {
+    counts[status] = ordersCache.filter(order =>
+      getOrderStatus(order) === status
+    ).length;
+  });
+
+  const total = ordersCache.length;
+
+  const entries = ORDER_STATUSES.map(status => ({
+    status,
+    count: counts[status],
+    color: STATUS_COLORS[status]
+  }));
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const radius = 112;
+
+  if (total === 0) {
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    ctx.strokeStyle = "#eee6dd";
+    ctx.lineWidth = 29;
+    ctx.stroke();
+  } else {
+    let angle = -Math.PI / 2;
+
+    entries.forEach(entry => {
+      if (entry.count === 0) return;
+
+      const slice = (entry.count / total) * Math.PI * 2;
+
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, angle, angle + slice);
+      ctx.closePath();
+
+      ctx.fillStyle = entry.color;
+      ctx.fill();
+
+      angle += slice;
+    });
+
+    // White centre creates a doughnut-style pie chart.
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 76, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+  }
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#302821";
+  ctx.font = "bold 35px Arial";
+  ctx.fillText(String(total), centerX, centerY - 8);
+
+  ctx.fillStyle = "#81766d";
+  ctx.font = "12px Arial";
+  ctx.fillText("Total orders", centerX, centerY + 20);
+
+  legend.innerHTML = total === 0
+    ? `<div class="empty-state">No orders yet. The chart will update when orders are recorded.</div>`
+    : entries.map(entry => `
+      <div class="legend-item">
+        <span class="legend-name">
+          <span class="legend-dot"
+            style="background:${entry.color}"></span>
+          ${safe(formatStatus(entry.status))}
+        </span>
+
+        <strong>${entry.count}</strong>
+      </div>
+    `).join("");
+}
+
+/* =========================================
+   PRODUCT MANAGEMENT
+========================================= */
+
+function renderProducts() {
+  const container = $("productsList");
+  if (!container) return;
+
+  if (!productsCache.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        No products found. Add your first product using the form above.
+      </div>
+    `;
     return;
   }
 
-  dashboard.dataset.ready = "";
-  showLogin();
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Image</th>
+            <th>Product</th>
+            <th>Price</th>
+            <th>Stock</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
 
-  if (user) {
-    signOut(auth).catch(error => {
-      console.error("Could not sign out unauthorized user:", error);
-    });
-  }
-});
+        <tbody>
+          ${productsCache.map(product => `
+            <tr>
+              <td>${imageMarkup(product.imageUrl, product.name)}</td>
 
-loginForm.addEventListener("submit", async event => {
+              <td>
+                <strong>${safe(product.name || "Unnamed product")}</strong>
+                <div class="muted">${safe(product.category || "")}</div>
+              </td>
+
+              <td>${money(product.price)}</td>
+
+              <td>${Number(product.stock ?? 0)}</td>
+
+              <td>
+                <span class="status-badge ${product.active === false ? "danger" : "success"}">
+                  ${product.active === false ? "Inactive" : "Active"}
+                </span>
+              </td>
+
+              <td>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  <button class="btn btn-secondary"
+                    data-product-action="edit"
+                    data-id="${safe(product.id)}"
+                    type="button">
+                    Edit
+                  </button>
+
+                  <button class="btn btn-danger"
+                    data-product-action="delete"
+                    data-id="${safe(product.id)}"
+                    type="button">
+                    Delete
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+async function saveProduct(event) {
   event.preventDefault();
+  requireAdmin();
 
-  if (loginButton.disabled) return;
+  const button = $("saveProductButton");
+  const message = $("productMessage");
 
-  loginButton.disabled = true;
-  loginButton.textContent = "Signing in...";
-  loginMessage.textContent = "Signing in...";
+  const name = $("productName").value.trim();
+  const price = Number($("productPrice").value);
+  const stock = Number($("productStock").value || 0);
+
+  if (!name || !Number.isFinite(price) || price < 0) {
+    message.textContent = "Enter a valid product name and price.";
+    message.style.color = "#c0392b";
+    return;
+  }
+
+  if (!Number.isFinite(stock) || stock < 0) {
+    message.textContent = "Enter a valid stock quantity.";
+    message.style.color = "#c0392b";
+    return;
+  }
+
+  const imageUrl = $("productImage").value.trim();
+
+  if (imageUrl) {
+    try {
+      const parsedUrl = new URL(imageUrl);
+
+      if (!["https:", "http:"].includes(parsedUrl.protocol)) {
+        throw new Error("Invalid protocol");
+      }
+    } catch {
+      message.textContent = "Enter a valid image URL.";
+      message.style.color = "#c0392b";
+      return;
+    }
+  }
+
+  const data = {
+    name,
+    price,
+    stock,
+    category: $("productCategory").value.trim(),
+    imageUrl,
+    description: $("productDescription").value.trim(),
+    active: $("productActive").value === "true",
+    updatedAt: serverTimestamp()
+  };
+
+  button.disabled = true;
+  button.textContent = "Saving…";
+  message.textContent = "";
 
   try {
-    const result = await signInWithEmailAndPassword(
-      auth,
-      emailInput.value.trim(),
-      passwordInput.value
-    );
+    if (editingProductId) {
+      await updateDoc(
+        doc(db, "products", editingProductId),
+        data
+      );
+    } else {
+      data.createdAt = serverTimestamp();
 
-    if (result.user.uid !== ADMIN_UID) {
-      await signOut(auth);
-      throw new Error("This account is not authorized as admin.");
+      await addDoc(collection(db, "products"), data);
     }
 
-    loginMessage.textContent = "Login successful.";
-    showDashboard();
-  } catch (error) {
-    console.error("Admin login error:", error);
+    message.textContent = editingProductId
+      ? "Product updated successfully."
+      : "Product added successfully.";
 
-    const friendlyMessages = {
-      "auth/invalid-email": "Email address is invalid.",
-      "auth/user-not-found": "No account found with this email.",
-      "auth/wrong-password": "Incorrect password.",
-      "auth/invalid-credential": "Email or password is incorrect.",
-      "auth/too-many-requests": "Too many attempts. Try again later.",
-      "auth/network-request-failed": "Network error. Check your internet connection."
+    message.style.color = "#27734a";
+
+    resetProductForm();
+    await loadProducts();
+  } catch (error) {
+    console.error("Product save error:", error);
+
+    message.textContent =
+      "Could not save product: " + error.message;
+
+    message.style.color = "#c0392b";
+  } finally {
+    button.disabled = false;
+    button.textContent = editingProductId
+      ? "Update product"
+      : "Save product";
+  }
+}
+
+function resetProductForm() {
+  editingProductId = null;
+
+  $("productForm")?.reset();
+
+  if ($("productStock")) $("productStock").value = "0";
+  if ($("productActive")) $("productActive").value = "true";
+
+  if ($("saveProductButton")) {
+    $("saveProductButton").textContent = "Save product";
+  }
+
+  $("cancelEditButton")?.classList.add("hidden");
+}
+
+function handleProductAction(event) {
+  const button = event.target.closest("[data-product-action]");
+  if (!button) return;
+
+  requireAdmin();
+
+  const id = button.dataset.id;
+  const action = button.dataset.productAction;
+
+  const product = productsCache.find(item => item.id === id);
+  if (!product) return;
+
+  if (action === "edit") {
+    editingProductId = id;
+
+    $("productName").value = product.name || "";
+    $("productPrice").value = product.price ?? "";
+    $("productStock").value = product.stock ?? 0;
+    $("productCategory").value = product.category || "";
+    $("productImage").value = product.imageUrl || "";
+    $("productDescription").value = product.description || "";
+    $("productActive").value = product.active === false ? "false" : "true";
+
+    $("saveProductButton").textContent = "Update product";
+    $("cancelEditButton").classList.remove("hidden");
+
+    $("products").scrollIntoView({ behavior: "smooth" });
+    $("productName").focus();
+
+    return;
+  }
+
+  if (action === "delete") {
+    const confirmed = confirm(
+      `Permanently delete "${product.name || "this product"}"?\n\n` +
+      "This action cannot be undone."
+    );
+
+    if (!confirmed) return;
+
+    deleteProduct(id);
+  }
+}
+
+async function deleteProduct(id) {
+  requireAdmin();
+
+  try {
+    await deleteDoc(doc(db, "products", id));
+
+    alert("Product deleted successfully.");
+
+    await loadProducts();
+  } catch (error) {
+    console.error("Product delete error:", error);
+    alert("Could not delete product: " + error.message);
+  }
+}
+
+/* =========================================
+   ORDER MANAGEMENT
+========================================= */
+
+function renderOrders() {
+  const container = $("ordersList");
+  if (!container) return;
+
+  const search = ($("orderSearch")?.value || "")
+    .trim()
+    .toLowerCase();
+
+  const filtered = ordersCache.filter(order => {
+    const searchable = [
+      order.id,
+      getCustomerName(order),
+      getCustomerPhone(order),
+      getOrderStatus(order),
+      getPaymentStatus(order)
+    ].join(" ").toLowerCase();
+
+    return searchable.includes(search);
+  });
+
+  if (!filtered.length) {
+    container.innerHTML = `
+      <div class="empty-state">
+        ${ordersCache.length
+          ? "No orders match your search."
+          : "No orders have been recorded yet."}
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map(order => {
+    const items = getOrderItems(order);
+    const status = getOrderStatus(order);
+    const paymentStatus = getPaymentStatus(order);
+    const transactionId = getTransactionId(order);
+
+    const itemMarkup = items.length
+      ? items.map(item => {
+          const name = item.name || item.productName || "Product";
+          const quantity = Number(item.quantity ?? item.qty ?? 1);
+          const price = Number(item.price ?? item.unitPrice ?? 0);
+
+          return `
+            <div style="display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--border)">
+              <span>${safe(name)} × ${quantity}</span>
+              <strong>${money(price * quantity)}</strong>
+            </div>
+          `;
+        }).join("")
+      : `<p class="muted">No item details available in this order.</p>`;
+
+    return `
+      <article class="panel"
+        style="margin:0 0 17px;padding:17px;box-shadow:none;background:#fffdfb">
+
+        <div class="panel-heading">
+          <div style="min-width:0">
+            <div style="font-weight:800;overflow-wrap:anywhere">
+              Order #${safe(order.id)}
+            </div>
+
+            <div class="panel-description">
+              ${safe(formatDate(order.createdAt || order.orderDate || order.date))}
+            </div>
+          </div>
+
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            <span class="status-badge ${statusClass(status)}">
+              ${safe(formatStatus(status))}
+            </span>
+
+            <span class="status-badge ${statusClass(paymentStatus)}">
+              ${safe(formatStatus(paymentStatus))}
+            </span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px">
+
+          <div>
+            <h3 style="margin:0 0 10px;font-size:13px">Customer details</h3>
+
+            <p style="margin:5px 0">
+              <strong>Name:</strong> ${safe(getCustomerName(order))}
+            </p>
+
+            <p style="margin:5px 0">
+              <strong>Phone:</strong> ${safe(getCustomerPhone(order))}
+            </p>
+
+            <p style="margin:5px 0">
+              <strong>Address:</strong> ${safe(getCustomerAddress(order))}
+            </p>
+          </div>
+
+          <div>
+            <h3 style="margin:0 0 10px;font-size:13px">Order items</h3>
+            ${itemMarkup}
+          </div>
+
+        </div>
+
+        <div style="margin-top:16px;padding:13px;border-radius:10px;background:var(--surface-soft)">
+
+          <div style="display:flex;justify-content:space-between;gap:12px;margin:5px 0">
+            <span>Subtotal</span>
+            <strong>${money(getOrderSubtotal(order))}</strong>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;gap:12px;margin:5px 0">
+            <span>Delivery fee</span>
+            <strong>${money(getDeliveryFee(order))}</strong>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;gap:12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:16px">
+            <strong>Order total</strong>
+            <strong>${money(getOrderTotal(order))}</strong>
+          </div>
+
+        </div>
+
+        <div style="margin-top:17px">
+
+          <div class="field">
+            <label for="status-${safe(order.id)}">Order status</label>
+            <select id="status-${safe(order.id)}"
+              data-order-field="status"
+              data-id="${safe(order.id)}">
+              ${makeOptions(ORDER_STATUSES, status)}
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="payment-${safe(order.id)}">Payment status</label>
+            <select id="payment-${safe(order.id)}"
+              data-order-field="paymentStatus"
+              data-id="${safe(order.id)}">
+              ${makeOptions(PAYMENT_STATUSES, paymentStatus)}
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="fee-${safe(order.id)}">Delivery fee (BDT)</label>
+            <input id="fee-${safe(order.id)}"
+              data-order-field="deliveryFee"
+              data-id="${safe(order.id)}"
+              type="number" min="0" step="0.01"
+              value="${getDeliveryFee(order)}">
+          </div>
+
+          <div class="field">
+            <label for="courier-${safe(order.id)}">Delivery service / courier</label>
+            <input id="courier-${safe(order.id)}"
+              data-order-field="courierName"
+              data-id="${safe(order.id)}"
+              value="${safe(order.courierName || order.deliveryService || "")}"
+              placeholder="e.g. Steadfast, Pathao">
+          </div>
+
+          <div class="field">
+            <label for="tracking-${safe(order.id)}">Tracking number</label>
+            <input id="tracking-${safe(order.id)}"
+              data-order-field="trackingNumber"
+              data-id="${safe(order.id)}"
+              value="${safe(order.trackingNumber || "")}"
+              placeholder="Optional tracking number">
+          </div>
+
+        </div>
+
+        <div style="margin-top:13px;padding:13px;border:1px solid var(--border);border-radius:10px">
+
+          <strong style="display:block;margin-bottom:9px">
+            Manual payment details
+          </strong>
+
+          <p style="margin:5px 0">
+            <strong>Method:</strong>
+            ${safe(getPaymentMethod(order))}
+          </p>
+
+          <p style="margin:5px 0">
+            <strong>Transaction ID:</strong>
+            ${transactionId
+              ? `<code style="overflow-wrap:anywhere">${safe(transactionId)}</code>`
+              : "Not provided"}
+          </p>
+
+          <p class="panel-description">
+            Confirm a manual payment only after independently verifying the transaction.
+          </p>
+
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:17px">
+
+          <button class="btn"
+            data-order-action="save"
+            data-id="${safe(order.id)}"
+            type="button">
+            Save order changes
+          </button>
+
+          <button class="btn btn-danger"
+            data-order-action="delete"
+            data-id="${safe(order.id)}"
+            type="button">
+            Delete order
+          </button>
+
+        </div>
+
+      </article>
+    `;
+  }).join("");
+}
+
+async function handleOrderChange(event) {
+  const field = event.target.dataset.orderField;
+
+  if (!field) return;
+
+  requireAdmin();
+
+  const id = event.target.dataset.id;
+  const order = ordersCache.find(item => item.id === id);
+
+  if (!order) return;
+
+  // A status selection is saved with the order's Save button.
+  // No database write occurs just by changing a field.
+}
+
+async function handleOrderAction(event) {
+  const button = event.target.closest("[data-order-action]");
+  if (!button) return;
+
+  requireAdmin();
+
+  const id = button.dataset.id;
+  const action = button.dataset.orderAction;
+
+  const order = ordersCache.find(item => item.id === id);
+  if (!order) return;
+
+  if (action === "delete") {
+    const confirmed = confirm(
+      `Permanently delete order #${id}?\n\n` +
+      `Customer: ${getCustomerName(order)}\n` +
+      `Total: ${money(getOrderTotal(order))}\n\n` +
+      "This cannot be undone. Continue?"
+    );
+
+    if (!confirmed) return;
+
+    await deleteOrder(id);
+    return;
+  }
+
+  if (action === "save") {
+    await saveOrderChanges(id, button);
+  }
+}
+
+async function saveOrderChanges(id, button) {
+  requireAdmin();
+
+  const order = ordersCache.find(item => item.id === id);
+  if (!order) return;
+
+  const status = $(`status-${id}`).value;
+  const paymentStatus = $(`payment-${id}`).value;
+  const deliveryFee = Number($(`fee-${id}`).value);
+  const courierName = $(`courier-${id}`).value.trim();
+  const trackingNumber = $(`tracking-${id}`).value.trim();
+
+  if (!ORDER_STATUSES.includes(status)) {
+    alert("Invalid order status.");
+    return;
+  }
+
+  if (!PAYMENT_STATUSES.includes(paymentStatus)) {
+    alert("Invalid payment status.");
+    return;
+  }
+
+  if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
+    alert("Enter a valid delivery fee.");
+    return;
+  }
+
+  const updates = {
+    status,
+    paymentStatus,
+    deliveryFee,
+    grandTotal: getOrderSubtotal(order) + deliveryFee,
+    courierName,
+    trackingNumber,
+    updatedAt: serverTimestamp()
+  };
+
+  if (status === "confirmed" && !order.confirmedAt) {
+    updates.confirmedAt = serverTimestamp();
+    updates.paymentDeadline = new Date(
+      Date.now() + PAYMENT_WINDOW_MS
+    );
+  }
+
+  if (status === "delivered" && !order.deliveredAt) {
+    updates.deliveredAt = serverTimestamp();
+  }
+
+  if (status === "cancelled" && !order.cancelledAt) {
+    updates.cancelledAt = serverTimestamp();
+  }
+
+  if (paymentStatus === "paid" && !order.paidAt) {
+    const confirmed = confirm(
+      "Have you independently verified that the payment was received?\n\n" +
+      "Only select OK if the transaction has been verified."
+    );
+
+    if (!confirmed) {
+      $(`payment-${id}`).value = getPaymentStatus(order);
+      return;
+    }
+
+    updates.paidAt = serverTimestamp();
+  }
+
+  if (paymentStatus !== "paid" && order.paidAt) {
+    updates.paidAt = null;
+  }
+
+  button.disabled = true;
+  button.textContent = "Saving…";
+
+  try {
+    await updateDoc(doc(db, "orders", id), updates);
+
+    alert("Order updated successfully.");
+
+    await loadOrders();
+  } catch (error) {
+    console.error("Order update error:", error);
+    alert("Could not update order: " + error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Save order changes";
+  }
+}
+
+async function deleteOrder(id) {
+  requireAdmin();
+
+  try {
+    await deleteDoc(doc(db, "orders", id));
+
+    alert("Order deleted permanently.");
+
+    await loadOrders();
+  } catch (error) {
+    console.error("Order delete error:", error);
+
+    alert(
+      "Could not delete order. Check Firestore permissions and try again.\n\n" +
+      error.message
+    );
+  }
+}
+
+/* =========================================
+   PAYMENT SETTINGS
+========================================= */
+
+async function loadPaymentSettings() {
+  requireAdmin();
+
+  try {
+    const ref = doc(db, "settings", "payment");
+    const snapshot = await getDoc(ref);
+
+    paymentSettings = snapshot.exists()
+      ? snapshot.data()
+      : {};
+
+    if ($("bkashNumber")) {
+      $("bkashNumber").value = paymentSettings.bkashNumber || "";
+    }
+
+    if ($("nagadNumber")) {
+      $("nagadNumber").value = paymentSettings.nagadNumber || "";
+    }
+
+    if ($("rocketNumber")) {
+      $("rocketNumber").value = paymentSettings.rocketNumber || "";
+    }
+  } catch (error) {
+    console.error("Payment settings load error:", error);
+
+    if ($("paymentSettingsMessage")) {
+      $("paymentSettingsMessage").textContent =
+        "Could not load payment settings: " + error.message;
+
+      $("paymentSettingsMessage").style.color = "#c0392b";
+    }
+  }
+}
+
+async function savePaymentSettings(event) {
+  event.preventDefault();
+  requireAdmin();
+
+  const button = $("savePaymentSettings");
+  const message = $("paymentSettingsMessage");
+
+  const settings = {
+    bkashNumber: $("bkashNumber").value.trim(),
+    nagadNumber: $("nagadNumber").value.trim(),
+    rocketNumber: $("rocketNumber").value.trim(),
+    updatedAt: serverTimestamp()
+  };
+
+  button.disabled = true;
+  button.textContent = "Saving…";
+  message.textContent = "";
+
+  try {
+    await setDoc(
+      doc(db, "settings", "payment"),
+      settings,
+      { merge: true }
+    );
+
+    paymentSettings = {
+      ...paymentSettings,
+      ...settings
     };
 
-    loginMessage.textContent =
-      "Login failed: " +
-      (friendlyMessages[error.code] || error.message);
+    message.textContent = "Payment settings saved successfully.";
+    message.style.color = "#27734a";
+  } catch (error) {
+    console.error("Payment settings save error:", error);
+
+    message.textContent =
+      "Could not save settings: " + error.message;
+
+    message.style.color = "#c0392b";
   } finally {
-    loginButton.disabled = false;
-    loginButton.textContent = "Login to Admin";
+    button.disabled = false;
+    button.textContent = "Save payment settings";
+  }
+}
+
+/* =========================================
+   AUTH STATE
+========================================= */
+
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    showLogin();
+    return;
+  }
+
+  if (!isAdmin(user)) {
+    showMessage(
+      "Access denied. This account is not authorized.",
+      true
+    );
+
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Unauthorized sign-out error:", error);
+    }
+
+    showLogin();
+    return;
+  }
+
+  try {
+    showDashboard();
+  } catch (error) {
+    console.error("Dashboard initialization error:", error);
+    showMessage("Could not open dashboard: " + error.message, true);
   }
 });

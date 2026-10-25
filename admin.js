@@ -26,15 +26,25 @@ const loginForm = document.getElementById("loginForm");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 const loginButton = document.getElementById("loginButton");
+const loginScreen = document.getElementById("loginScreen");
 const dashboard = document.getElementById("dashboard");
-const message = document.getElementById("message");
+const loginMessage = document.getElementById("loginMessage");
 
 let editingId = null;
 let productsCache = [];
+let ordersCache = [];
 let savingSettings = false;
 let savingProduct = false;
 let loadingOrders = false;
 let loadingProducts = false;
+let refreshingDashboard = false;
+
+const ORDER_STATUSES = [
+  "pending", "confirmed", "processing",
+  "shipped", "delivered", "cancelled"
+];
+
+const PAYMENT_STATUSES = ["unpaid", "unverified", "paid"];
 
 function safe(value) {
   return String(value ?? "").replace(/[&<>"']/g, char => ({
@@ -51,7 +61,6 @@ function money(value) {
 
   return Number.isFinite(amount)
     ? "৳" + amount.toLocaleString("en-BD", {
-        minimumFractionDigits: 0,
         maximumFractionDigits: 2
       })
     : "—";
@@ -60,8 +69,11 @@ function money(value) {
 function showMessage(text) {
   const box = document.getElementById("panelMessage");
 
-  if (box) box.textContent = text;
-  else if (message) message.textContent = text;
+  if (box) {
+    box.textContent = text;
+  } else if (loginMessage) {
+    loginMessage.textContent = text;
+  }
 }
 
 function isAdmin() {
@@ -76,11 +88,6 @@ function requireAdmin() {
 
   showMessage("Unauthorized. Please log in as the admin.");
   return false;
-}
-
-function showLogin() {
-  if (loginForm) loginForm.classList.remove("hidden");
-  if (dashboard) dashboard.classList.add("hidden");
 }
 
 function formatDate(value) {
@@ -102,6 +109,17 @@ function formatDate(value) {
   });
 }
 
+function timestampMillis(value) {
+  if (!value) return 0;
+
+  if (typeof value.toMillis === "function") {
+    return value.toMillis();
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
 function getOrderItems(items) {
   if (Array.isArray(items)) return items;
 
@@ -118,14 +136,18 @@ function renderOrderItems(items) {
   const normalized = getOrderItems(items);
 
   if (!normalized.length) {
-    return "<p>No item details available.</p>";
+    return '<p class="help-text">No item details available.</p>';
   }
 
   return `
     <div class="order-items-list">
       ${normalized.map((item, index) => {
         if (!item || typeof item !== "object") {
-          return `<div class="order-item">${safe(item ?? "Product")}</div>`;
+          return `
+            <div class="order-item">
+              ${safe(item ?? "Product")}
+            </div>
+          `;
         }
 
         const name =
@@ -138,6 +160,7 @@ function renderOrderItems(items) {
         const quantity = Number(item.quantity ?? item.qty ?? 1);
         const price = Number(item.price ?? item.unitPrice);
         const explicitTotal = item.subtotal ?? item.lineTotal;
+
         const lineTotal = explicitTotal != null
           ? Number(explicitTotal)
           : price * quantity;
@@ -178,240 +201,372 @@ function paymentStatusLabel(status) {
   })[status] || status || "Unpaid";
 }
 
+function statusClass(status) {
+  const allowed = [
+    ...ORDER_STATUSES,
+    ...PAYMENT_STATUSES,
+    "failed"
+  ];
+
+  return allowed.includes(status) ? status : "pending";
+}
+
+function statusOptions(options, selected, labels = {}) {
+  return options.map(value => `
+    <option value="${safe(value)}"
+      ${value === selected ? "selected" : ""}>
+      ${safe(labels[value] || value.charAt(0).toUpperCase() + value.slice(1))}
+    </option>
+  `).join("");
+}
+
+function showLogin() {
+  loginScreen.classList.remove("hidden");
+  dashboard.classList.add("hidden");
+}
+
 function showDashboard() {
   if (!isAdmin()) {
     showLogin();
     return;
   }
 
-  loginForm.classList.add("hidden");
+  loginScreen.classList.add("hidden");
   dashboard.classList.remove("hidden");
 
   if (dashboard.dataset.ready === "yes") {
-    loadPaymentSettings();
-    loadProducts();
-    loadOrders();
+    refreshAll();
     return;
   }
 
   dashboard.dataset.ready = "yes";
 
   dashboard.innerHTML = `
-    <style>
-      #dashboard, #dashboard * {
-        box-sizing: border-box;
-      }
+    <div class="app-layout">
 
-      #dashboard {
-        width: 100%;
-        max-width: 100%;
-        min-width: 0;
-        overflow-wrap: anywhere;
-      }
+      <aside class="sidebar" id="adminSidebar">
+        <div class="sidebar-brand">
+          <strong>MINHA</strong>
+          <small>LADIES BAG · ADMIN</small>
+        </div>
 
-      #dashboard input,
-      #dashboard textarea,
-      #dashboard select {
-        width: 100%;
-        max-width: 100%;
-        min-width: 0;
-        padding: 11px;
-        border: 1px solid #d8cbd2;
-        border-radius: 8px;
-        font: inherit;
-        background: #fff;
-        color: #302821;
-      }
+        <div class="sidebar-label">Workspace</div>
 
-      #dashboard input[type="checkbox"] {
-        width: auto;
-      }
+        <nav class="side-nav" aria-label="Admin navigation">
+          <button type="button" class="active" data-section="overview">
+            <span class="side-icon">⌂</span> Dashboard
+          </button>
 
-      #dashboard label {
-        display: block;
-        margin: 12px 0 6px;
-        font-weight: 600;
-      }
+          <button type="button" data-section="productsSection">
+            <span class="side-icon">▣</span> Products
+          </button>
 
-      #dashboard button {
-        max-width: 100%;
-        padding: 10px 12px;
-        border: 0;
-        border-radius: 8px;
-        cursor: pointer;
-      }
+          <button type="button" data-section="ordersSection">
+            <span class="side-icon">▤</span> Orders
+          </button>
 
-      #dashboard button:disabled {
-        opacity: .65;
-        cursor: wait;
-      }
+          <button type="button" data-section="paymentSection">
+            <span class="side-icon">৳</span> Payments
+          </button>
 
-      #dashboard .admin-top {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-      }
+          <button type="button" data-section="settingsSection">
+            <span class="side-icon">⚙</span> Settings
+          </button>
+        </nav>
 
-      #dashboard .admin-section {
-        margin-top: 24px;
-        min-width: 0;
-      }
+        <div class="sidebar-spacer"></div>
 
-      #dashboard .admin-card {
-        width: 100%;
-        min-width: 0;
-        padding: 14px;
-        margin: 14px 0;
-        border: 1px solid #eadfd3;
-        border-radius: 12px;
-        background: #fff;
-        overflow-wrap: anywhere;
-      }
+        <div class="sidebar-footer">
+          <strong>Minha Ladies Bag</strong><br>
+          Store Management
+        </div>
+      </aside>
 
-      #dashboard .order-items-list {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr);
-        gap: 10px;
-        margin-top: 10px;
-      }
+      <main class="main-area">
+        <header class="topbar">
+          <div style="display:flex;align-items:center;gap:10px;min-width:0">
+            <button id="mobileMenuButton"
+              class="mobile-menu-button"
+              type="button"
+              aria-label="Open navigation">☰</button>
 
-      #dashboard .order-item,
-      #dashboard .payment-box,
-      #dashboard .order-summary {
-        padding: 12px;
-        margin: 12px 0;
-        background: #faf7f2;
-        border: 1px solid #eadfd3;
-        border-radius: 9px;
-        overflow-wrap: anywhere;
-      }
+            <div>
+              <h1 id="pageTitle">Dashboard</h1>
+              <p id="pageSubtitle">Your store at a glance</p>
+            </div>
+          </div>
 
-      #dashboard .order-summary p {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        gap: 6px 12px;
-      }
+          <div class="topbar-right">
+            <div class="admin-avatar" aria-label="Admin account">M</div>
+            <button id="logoutButton" class="logout-button" type="button">
+              Logout
+            </button>
+          </div>
+        </header>
 
-      #dashboard .save-order {
-        width: 100%;
-        margin-top: 14px;
-        background: #814438;
-        color: #fff;
-        font-weight: 700;
-      }
+        <p id="panelMessage" role="status" aria-live="polite"></p>
 
-      #dashboard .help-text {
-        font-size: 13px;
-        color: #766771;
-        line-height: 1.6;
-      }
+        <section id="overview">
+          <div class="stats-grid">
 
-      #dashboard .status-note {
-        padding: 10px;
-        border-radius: 8px;
-        background: #faf7f2;
-        line-height: 1.6;
-      }
+            <article class="stat-card">
+              <div class="stat-top">
+                <span>Total Products</span>
+                <span class="stat-icon">▣</span>
+              </div>
+              <div class="stat-value" id="statProducts">—</div>
+              <div class="stat-note">Products in inventory</div>
+            </article>
 
-      #dashboard .admin-divider {
-        margin: 22px 0;
-        border: 0;
-        border-top: 1px solid #eadfd3;
-      }
+            <article class="stat-card">
+              <div class="stat-top">
+                <span>Total Orders</span>
+                <span class="stat-icon">▤</span>
+              </div>
+              <div class="stat-value" id="statOrders">—</div>
+              <div class="stat-note">Orders recorded in Firestore</div>
+            </article>
 
-      @media (min-width: 600px) {
-        #dashboard .order-items-list {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-    </style>
+            <article class="stat-card">
+              <div class="stat-top">
+                <span>Paid Revenue</span>
+                <span class="stat-icon">৳</span>
+              </div>
+              <div class="stat-value" id="statRevenue">—</div>
+              <div class="stat-note">Orders marked as paid</div>
+            </article>
 
-    <div class="admin-top">
-      <h2>MINHA Admin Panel</h2>
-      <button id="logoutButton" type="button">Logout</button>
+            <article class="stat-card">
+              <div class="stat-top">
+                <span>Pending Orders</span>
+                <span class="stat-icon">◷</span>
+              </div>
+              <div class="stat-value" id="statPending">—</div>
+              <div class="stat-note">Awaiting further action</div>
+            </article>
+
+          </div>
+
+          <div class="content-grid">
+            <article class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <h2>Revenue Overview</h2>
+                  <p>Monthly revenue from orders marked paid</p>
+                </div>
+              </div>
+
+              <div class="chart-wrap">
+                <svg id="revenueChart"
+                  viewBox="0 0 520 190"
+                  role="img"
+                  aria-label="Monthly paid revenue chart">
+                  <text x="15" y="30" fill="#8993a4" font-size="12">
+                    Loading revenue data...
+                  </text>
+                </svg>
+              </div>
+
+              <div class="chart-legend">
+                <span><i class="legend-dot"></i>Paid revenue</span>
+              </div>
+            </article>
+
+            <article class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <h2>Order Overview</h2>
+                  <p>Current order status breakdown</p>
+                </div>
+              </div>
+
+              <div class="status-list" id="orderOverview">
+                <p class="help-text">Loading order statistics...</p>
+              </div>
+            </article>
+          </div>
+
+          <article class="panel-card">
+            <div class="section-toolbar">
+              <div>
+                <h2>Recent Orders</h2>
+                <p class="section-description">
+                  Latest orders saved in your store.
+                </p>
+              </div>
+
+              <button class="secondary-button"
+                type="button" data-section="ordersSection">
+                View All Orders
+              </button>
+            </div>
+
+            <div id="recentOrders">
+              <p class="help-text">Loading recent orders...</p>
+            </div>
+          </article>
+        </section>
+
+        <section class="section-panel" id="productsSection">
+          <article class="panel-card">
+            <div class="section-toolbar">
+              <div>
+                <h2 id="formHeading">Add New Product</h2>
+                <p class="section-description">
+                  Create and manage products displayed in your shop.
+                </p>
+              </div>
+            </div>
+
+            <form id="productForm">
+              <div class="form-grid">
+                <div>
+                  <label class="form-label" for="pName">Product Name *</label>
+                  <input class="dashboard-field" id="pName"
+                    maxlength="120" required>
+                </div>
+
+                <div>
+                  <label class="form-label" for="pPrice">Price (৳) *</label>
+                  <input class="dashboard-field" id="pPrice"
+                    type="number" min="0" step="1" required>
+                </div>
+
+                <div>
+                  <label class="form-label" for="pStock">Stock Quantity *</label>
+                  <input class="dashboard-field" id="pStock"
+                    type="number" min="0" step="1" required>
+                </div>
+
+                <div>
+                  <label class="form-label" for="pCategory">Category</label>
+                  <input class="dashboard-field" id="pCategory">
+                </div>
+
+                <div class="full-width">
+                  <label class="form-label" for="pImage">Image URL *</label>
+                  <input class="dashboard-field" id="pImage"
+                    type="url" placeholder="https://..." required>
+                </div>
+
+                <div class="full-width">
+                  <label class="form-label" for="pDescription">Description</label>
+                  <textarea class="dashboard-field"
+                    id="pDescription" rows="3"></textarea>
+                </div>
+              </div>
+
+              <label class="checkbox-row">
+                <input id="pActive" type="checkbox" checked>
+                Show this product on the website
+              </label>
+
+              <div class="form-actions">
+                <button class="primary-button" id="saveProduct" type="submit">
+                  Save Product
+                </button>
+
+                <button class="secondary-button" id="cancelEdit"
+                  type="button" hidden>Cancel Edit</button>
+              </div>
+            </form>
+          </article>
+
+          <article class="panel-card">
+            <div class="section-toolbar">
+              <h2>Product Inventory</h2>
+              <button id="refreshProducts"
+                class="secondary-button" type="button">
+                Refresh Products
+              </button>
+            </div>
+
+            <div id="productsList" class="admin-list">
+              <p class="empty-state">Loading products...</p>
+            </div>
+          </article>
+        </section>
+
+        <section class="section-panel" id="ordersSection">
+          <article class="panel-card">
+            <div class="section-toolbar">
+              <div>
+                <h2>Customer Orders</h2>
+                <p class="section-description">
+                  Manage delivery charges, courier details, order status,
+                  and payment verification.
+                </p>
+              </div>
+
+              <button id="refreshOrders"
+                class="secondary-button" type="button">
+                Refresh Orders
+              </button>
+            </div>
+
+            <div id="ordersList">
+              <p class="empty-state">Loading orders...</p>
+            </div>
+          </article>
+        </section>
+
+        <section class="section-panel" id="paymentSection">
+          <article class="panel-card">
+            <div>
+              <h2>Payment Settings</h2>
+              <p class="section-description">
+                Configure the receiving numbers supplied by the store owner.
+              </p>
+            </div>
+
+            <form id="paymentSettingsForm">
+              <div class="form-grid">
+                <div>
+                  <label class="form-label" for="bkashNumber">bKash Number</label>
+                  <input class="dashboard-field" id="bkashNumber"
+                    type="tel" maxlength="25">
+                </div>
+
+                <div>
+                  <label class="form-label" for="nagadNumber">Nagad Number</label>
+                  <input class="dashboard-field" id="nagadNumber"
+                    type="tel" maxlength="25">
+                </div>
+
+                <div>
+                  <label class="form-label" for="rocketNumber">Rocket Number</label>
+                  <input class="dashboard-field" id="rocketNumber"
+                    type="tel" maxlength="25">
+                </div>
+              </div>
+
+              <button class="primary-button" id="savePaymentSettings"
+                type="submit" style="margin-top:18px">
+                Save Payment Numbers
+              </button>
+            </form>
+          </article>
+        </section>
+
+        <section class="section-panel" id="settingsSection">
+          <article class="panel-card">
+            <h2>Store Settings</h2>
+            <p class="section-description">
+              Store information and administration.
+            </p>
+
+            <p class="help-text">
+              Signed in as the authorized Firebase administrator.
+              Product, order and payment changes are saved in Firestore.
+            </p>
+
+            <button class="secondary-button" id="settingsRefresh"
+              type="button">Refresh Dashboard Data</button>
+          </article>
+        </section>
+
+      </main>
     </div>
-
-    <p id="panelMessage" role="status" aria-live="polite"></p>
-
-    <hr class="admin-divider">
-
-    <section class="admin-section">
-      <h3>Payment Settings</h3>
-      <p class="help-text">Enter the seller's official receiving numbers.</p>
-
-      <form id="paymentSettingsForm">
-        <label for="bkashNumber">bKash Number</label>
-        <input id="bkashNumber" type="tel" maxlength="25">
-
-        <label for="nagadNumber">Nagad Number</label>
-        <input id="nagadNumber" type="tel" maxlength="25">
-
-        <label for="rocketNumber">Rocket Number</label>
-        <input id="rocketNumber" type="tel" maxlength="25">
-
-        <button id="savePaymentSettings" type="submit">
-          Save Payment Numbers
-        </button>
-      </form>
-    </section>
-
-    <hr class="admin-divider">
-
-    <section class="admin-section">
-      <h3 id="formHeading">Add New Product</h3>
-
-      <form id="productForm">
-        <label for="pName">Product Name *</label>
-        <input id="pName" required maxlength="120">
-
-        <label for="pPrice">Price (৳) *</label>
-        <input id="pPrice" type="number" min="0" step="1" required>
-
-        <label for="pStock">Stock Quantity *</label>
-        <input id="pStock" type="number" min="0" step="1" required>
-
-        <label for="pImage">Image URL *</label>
-        <input id="pImage" type="url" required>
-
-        <label for="pCategory">Category</label>
-        <input id="pCategory">
-
-        <label for="pDescription">Description</label>
-        <textarea id="pDescription" rows="3"></textarea>
-
-        <label>
-          <input id="pActive" type="checkbox" checked>
-          Show this product on the website
-        </label>
-
-        <button id="saveProduct" type="submit">Save Product</button>
-        <button id="cancelEdit" type="button" hidden>Cancel Edit</button>
-      </form>
-    </section>
-
-    <hr class="admin-divider">
-
-    <section class="admin-section">
-      <h3>Products</h3>
-      <button id="refreshProducts" type="button">Refresh Products</button>
-      <div id="productsList">Loading products...</div>
-    </section>
-
-    <hr class="admin-divider">
-
-    <section class="admin-section">
-      <h3>Customer Orders & Payment Verification</h3>
-      <p class="help-text">
-        Review orders and set the delivery fee before confirmation.
-        The online payment deadline is 30 minutes from confirmation.
-        Verify transactions before marking them Paid.
-      </p>
-      <button id="refreshOrders" type="button">Refresh Orders</button>
-      <div id="ordersList">Loading orders...</div>
-    </section>
   `;
 
   document.getElementById("logoutButton").addEventListener("click", async () => {
@@ -420,6 +575,45 @@ function showDashboard() {
     } catch (error) {
       showMessage("Logout failed: " + error.message);
     }
+  });
+
+  document.getElementById("mobileMenuButton").addEventListener("click", () => {
+    document.getElementById("adminSidebar").classList.toggle("open");
+  });
+
+  dashboard.querySelectorAll("[data-section]").forEach(button => {
+    button.addEventListener("click", () => {
+      const id = button.dataset.section;
+      const target = document.getElementById(id);
+
+      if (!target) return;
+
+      if (id === "overview") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      } else {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      dashboard.querySelectorAll(".side-nav button").forEach(item => {
+        item.classList.toggle("active", item.dataset.section === id);
+      });
+
+      const titles = {
+        overview: ["Dashboard", "Your store at a glance"],
+        productsSection: ["Products", "Manage your product inventory"],
+        ordersSection: ["Orders", "Manage orders and delivery"],
+        paymentSection: ["Payments", "Payment numbers and verification"],
+        settingsSection: ["Settings", "Store administration"]
+      };
+
+      document.getElementById("pageTitle").textContent =
+        (titles[id] || titles.overview)[0];
+
+      document.getElementById("pageSubtitle").textContent =
+        (titles[id] || titles.overview)[1];
+
+      document.getElementById("adminSidebar").classList.remove("open");
+    });
   });
 
   document.getElementById("paymentSettingsForm")
@@ -437,8 +631,12 @@ function showDashboard() {
   document.getElementById("refreshOrders")
     .addEventListener("click", loadOrders);
 
+  document.getElementById("settingsRefresh")
+    .addEventListener("click", refreshAll);
+
   document.getElementById("productsList").addEventListener("click", async event => {
     const button = event.target.closest("button[data-action]");
+
     if (!button || !requireAdmin()) return;
 
     const product = productsCache.find(item => item.id === button.dataset.id);
@@ -458,7 +656,10 @@ function showDashboard() {
       document.getElementById("saveProduct").textContent = "Update Product";
       document.getElementById("cancelEdit").hidden = false;
 
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      document.getElementById("productForm").scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
     }
 
     if (button.dataset.action === "delete") {
@@ -471,6 +672,7 @@ function showDashboard() {
         showMessage("Product deleted successfully.");
         await loadProducts();
       } catch (error) {
+        console.error("Delete product error:", error);
         showMessage("Delete failed: " + error.message);
       } finally {
         button.disabled = false;
@@ -501,31 +703,29 @@ function showDashboard() {
     const status = statusInput.value;
     const paymentStatus = paymentInput.value;
 
-    const validStatuses = [
-      "pending", "confirmed", "processing",
-      "shipped", "delivered", "cancelled"
-    ];
-
-    const validPaymentStatuses = ["unpaid", "unverified", "paid"];
-
     if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
       showMessage("Delivery fee must be zero or a positive number.");
       return;
     }
 
-    if (!validStatuses.includes(status) ||
-        !validPaymentStatuses.includes(paymentStatus)) {
+    if (!ORDER_STATUSES.includes(status) ||
+        !PAYMENT_STATUSES.includes(paymentStatus)) {
       showMessage("Invalid order or payment status.");
       return;
     }
 
-    if (
-      paymentStatus === "paid" &&
-      !confirm("Have you verified the payment in the receiving account?")
-    ) return;
+    if (paymentStatus === "paid") {
+      const currentOrder = ordersCache.find(order => order.id === id);
 
+      if (currentOrder?.paymentStatus !== "paid" &&
+          !confirm("Have you verified the transaction in the receiving account?")) {
+        return;
+      }
+    }
+
+    const originalText = button.textContent;
     button.disabled = true;
-    button.textContent = "Saving Order...";
+    button.textContent = "Saving...";
 
     try {
       const orderRef = doc(db, "orders", id);
@@ -552,12 +752,10 @@ function showDashboard() {
         updatedAt: serverTimestamp()
       };
 
-      // Keep the original confirmation time and deadline.
       if (status === "confirmed" && !order.confirmedAt) {
         changes.confirmedAt = serverTimestamp();
       }
 
-      // Start the 30-minute window only once for online payment.
       if (
         status === "confirmed" &&
         order.paymentMethod !== "cod" &&
@@ -569,7 +767,7 @@ function showDashboard() {
         );
       }
 
-      if (paymentStatus === "paid") {
+      if (paymentStatus === "paid" && order.paymentStatus !== "paid") {
         changes.paidAt = serverTimestamp();
       }
 
@@ -578,7 +776,7 @@ function showDashboard() {
       }
 
       if (order.paymentStatus === "paid" && paymentStatus !== "paid") {
-        if (!confirm("This order is already marked Paid. Are you sure you want to change it?")) {
+        if (!confirm("This order is already marked Paid. Change the status?")) {
           return;
         }
       }
@@ -593,13 +791,27 @@ function showDashboard() {
       alert("Order update failed:\n" + error.message);
     } finally {
       button.disabled = false;
-      button.textContent = "Save Order & Payment Status";
+      button.textContent = originalText;
     }
   });
 
-  loadPaymentSettings();
-  loadProducts();
-  loadOrders();
+  refreshAll();
+}
+
+async function refreshAll() {
+  if (!requireAdmin() || refreshingDashboard) return;
+
+  refreshingDashboard = true;
+
+  try {
+    await Promise.all([
+      loadPaymentSettings(),
+      loadProducts(),
+      loadOrders()
+    ]);
+  } finally {
+    refreshingDashboard = false;
+  }
 }
 
 async function loadPaymentSettings() {
@@ -612,16 +824,16 @@ async function loadPaymentSettings() {
     const snapshot = await getDoc(doc(db, "settings", "payment"));
     const settings = snapshot.exists() ? snapshot.data() : {};
 
-    document.getElementById("bkashNumber").value = settings.bkashNumber || "";
-    document.getElementById("nagadNumber").value = settings.nagadNumber || "";
-    document.getElementById("rocketNumber").value = settings.rocketNumber || "";
+    document.getElementById("bkashNumber").value =
+      settings.bkashNumber || "";
 
-    showMessage(
-      snapshot.exists()
-        ? "Payment settings loaded."
-        : "Enter the payment numbers and save them."
-    );
+    document.getElementById("nagadNumber").value =
+      settings.nagadNumber || "";
+
+    document.getElementById("rocketNumber").value =
+      settings.rocketNumber || "";
   } catch (error) {
+    console.error("Load payment settings error:", error);
     showMessage("Could not load payment settings: " + error.message);
   }
 }
@@ -749,6 +961,7 @@ async function saveProduct(event) {
     resetForm();
     await loadProducts();
   } catch (error) {
+    console.error("Save product error:", error);
     showMessage("Product save failed: " + error.message);
     alert("Product save failed:\n" + error.message);
   } finally {
@@ -764,7 +977,7 @@ async function loadProducts() {
   if (!list || loadingProducts || !isAdmin()) return;
 
   loadingProducts = true;
-  list.textContent = "Loading products...";
+  list.innerHTML = '<p class="empty-state">Loading products...</p>';
 
   try {
     const snapshot = await getDocs(collection(db, "products"));
@@ -774,31 +987,263 @@ async function loadProducts() {
       ...item.data()
     }));
 
+    const activeProducts = productsCache.filter(
+      product => product.active === true
+    );
+
+    document.getElementById("statProducts").textContent =
+      productsCache.length.toLocaleString("en-BD");
+
     if (!productsCache.length) {
-      list.textContent = "No products yet. Add your first product above.";
+      list.innerHTML = '<p class="empty-state">No products yet. Add your first product above.</p>';
       return;
     }
 
     list.innerHTML = productsCache.map(product => `
-      <article class="admin-card">
-        <strong>${safe(product.name)}</strong>
-        <p>Price: ${safe(money(product.price))} | Stock: ${safe(product.stock)}</p>
-        <p>Category: ${safe(product.category || "-")}</p>
-        <p>Status: ${product.active === true ? "Visible" : "Hidden"}</p>
+      <article class="item-card">
+        <h3>${safe(product.name || "Unnamed product")}</h3>
 
-        <button type="button" data-action="edit"
-          data-id="${safe(product.id)}">Edit</button>
+        <p><strong>Price:</strong> ${safe(money(product.price))}</p>
+        <p><strong>Stock:</strong> ${safe(product.stock ?? 0)}</p>
+        <p><strong>Category:</strong> ${safe(product.category || "-")}</p>
+        <p><strong>Visibility:</strong>
+          ${product.active === true ? "Visible" : "Hidden"}
+        </p>
 
-        <button type="button" data-action="delete"
-          data-id="${safe(product.id)}">Delete</button>
+        <div class="item-actions">
+          <button class="edit-button" type="button"
+            data-action="edit" data-id="${safe(product.id)}">
+            Edit
+          </button>
+
+          <button class="delete-button" type="button"
+            data-action="delete" data-id="${safe(product.id)}">
+            Delete
+          </button>
+        </div>
       </article>
     `).join("");
+
+    showMessage(
+      `${productsCache.length} products loaded (${activeProducts.length} visible).`
+    );
   } catch (error) {
     console.error("Load products error:", error);
-    list.textContent = "Could not load products: " + error.message;
+    list.innerHTML = `
+      <p class="empty-state">
+        Could not load products: ${safe(error.message)}
+      </p>
+    `;
   } finally {
     loadingProducts = false;
   }
+}
+
+function getOrderSubtotal(order) {
+  const value = Number(order.total);
+  return Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function getGrandTotal(order) {
+  if (order.grandTotal != null && Number.isFinite(Number(order.grandTotal))) {
+    return Number(order.grandTotal);
+  }
+
+  return getOrderSubtotal(order) + Math.max(0, Number(order.deliveryFee) || 0);
+}
+
+function updateOrderStatistics() {
+  const total = ordersCache.length;
+
+  const pending = ordersCache.filter(order =>
+    ["pending", "confirmed", "processing"].includes(order.status)
+  ).length;
+
+  const paidOrders = ordersCache.filter(
+    order => order.paymentStatus === "paid"
+  );
+
+  const revenue = paidOrders.reduce(
+    (sum, order) => sum + getGrandTotal(order),
+    0
+  );
+
+  document.getElementById("statOrders").textContent =
+    total.toLocaleString("en-BD");
+
+  document.getElementById("statPending").textContent =
+    pending.toLocaleString("en-BD");
+
+  document.getElementById("statRevenue").textContent = money(revenue);
+
+  renderOrderOverview();
+  renderRevenueChart();
+  renderRecentOrders();
+}
+
+function renderOrderOverview() {
+  const box = document.getElementById("orderOverview");
+  if (!box) return;
+
+  const statuses = [
+    { key: "pending", label: "Pending", color: "orange" },
+    { key: "processing", label: "Processing", color: "" },
+    { key: "shipped", label: "Shipped", color: "green" },
+    { key: "delivered", label: "Delivered", color: "green" },
+    { key: "cancelled", label: "Cancelled", color: "red" }
+  ];
+
+  if (!ordersCache.length) {
+    box.innerHTML = '<p class="help-text">No order statistics available yet.</p>';
+    return;
+  }
+
+  box.innerHTML = statuses.map(item => {
+    const count = ordersCache.filter(order => order.status === item.key).length;
+    const percent = Math.round(count / ordersCache.length * 100);
+
+    return `
+      <div>
+        <div class="status-row">
+          <span>${safe(item.label)}</span>
+          <strong>${count} (${percent}%)</strong>
+        </div>
+
+        <div class="progress-track">
+          <div class="progress-fill ${item.color}"
+            style="width:${percent}%"></div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderRevenueChart() {
+  const svg = document.getElementById("revenueChart");
+  if (!svg) return;
+
+  const now = new Date();
+  const months = [];
+
+  for (let offset = 5; offset >= 0; offset--) {
+    const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
+
+    months.push({
+      year: date.getFullYear(),
+      month: date.getMonth(),
+      label: date.toLocaleDateString("en", { month: "short" }),
+      value: 0
+    });
+  }
+
+  ordersCache.forEach(order => {
+    if (order.paymentStatus !== "paid") return;
+
+    const time = timestampMillis(order.paidAt || order.createdAt);
+    if (!time) return;
+
+    const date = new Date(time);
+    const bucket = months.find(item =>
+      item.year === date.getFullYear() &&
+      item.month === date.getMonth()
+    );
+
+    if (bucket) bucket.value += getGrandTotal(order);
+  });
+
+  const maxValue = Math.max(...months.map(item => item.value), 1);
+  const chartLeft = 48;
+  const chartRight = 505;
+  const chartTop = 16;
+  const chartBottom = 146;
+  const chartHeight = chartBottom - chartTop;
+  const chartWidth = chartRight - chartLeft;
+
+  const gridLines = [0, 1, 2, 3].map(index => {
+    const y = chartTop + index * chartHeight / 3;
+    const value = maxValue * (1 - index / 3);
+
+    return `
+      <line x1="${chartLeft}" y1="${y}"
+        x2="${chartRight}" y2="${y}"
+        stroke="#e9edf4" stroke-dasharray="3 4"/>
+
+      <text x="${chartLeft - 8}" y="${y + 4}"
+        fill="#8993a4" font-size="9" text-anchor="end">
+        ${safe(value >= 1000
+          ? (value / 1000).toFixed(value >= 10000 ? 0 : 1) + "k"
+          : Math.round(value))}
+      </text>
+    `;
+  }).join("");
+
+  const points = months.map((item, index) => {
+    const x = chartLeft + index * chartWidth / (months.length - 1);
+    const y = chartBottom - (item.value / maxValue) * chartHeight;
+
+    return {
+      x,
+      y,
+      item
+    };
+  });
+
+  const line = points.map((point, index) =>
+    `${index === 0 ? "M" : "L"} ${point.x} ${point.y}`
+  ).join(" ");
+
+  const area = `${line} L ${chartRight} ${chartBottom} L ${chartLeft} ${chartBottom} Z`;
+
+  svg.innerHTML = `
+    ${gridLines}
+
+    <path d="${area}" fill="#0866f5" opacity=".09"></path>
+
+    <path d="${line}" fill="none"
+      stroke="#0866f5" stroke-width="2.5"
+      stroke-linecap="round" stroke-linejoin="round"></path>
+
+    ${points.map(point => `
+      <circle cx="${point.x}" cy="${point.y}" r="3.5"
+        fill="#ffffff" stroke="#0866f5" stroke-width="2">
+        <title>${safe(point.item.label)}: ${safe(money(point.item.value))}</title>
+      </circle>
+
+      <text x="${point.x}" y="169"
+        fill="#8993a4" font-size="10" text-anchor="middle">
+        ${safe(point.item.label)}
+      </text>
+    `).join("")}
+  `;
+}
+
+function renderRecentOrders() {
+  const box = document.getElementById("recentOrders");
+  if (!box) return;
+
+  if (!ordersCache.length) {
+    box.innerHTML = '<p class="empty-state">No customer orders yet.</p>';
+    return;
+  }
+
+  box.innerHTML = ordersCache.slice(0, 5).map(order => `
+    <article class="item-card" style="margin-bottom:10px">
+      <div class="order-card-head">
+        <div>
+          <h3>Order #${safe(order.id)}</h3>
+          <p>${safe(formatDate(order.createdAt))}</p>
+        </div>
+
+        <span class="status-pill ${safe(statusClass(order.status))}">
+          ${safe(order.status || "pending")}
+        </span>
+      </div>
+
+      <p><strong>Customer:</strong> ${safe(order.customerName || "-")}</p>
+      <p><strong>Total:</strong> ${safe(money(getGrandTotal(order)))}</p>
+      <p><strong>Payment:</strong> ${safe(paymentStatusLabel(order.paymentStatus))}</p>
+    </article>
+  `).join("");
 }
 
 async function loadOrders() {
@@ -807,118 +1252,197 @@ async function loadOrders() {
   if (!list || loadingOrders || !isAdmin()) return;
 
   loadingOrders = true;
-  list.textContent = "Loading orders...";
+  list.innerHTML = '<p class="empty-state">Loading orders...</p>';
 
   try {
     const snapshot = await getDocs(collection(db, "orders"));
 
-    const orders = snapshot.docs.map(item => ({
+    ordersCache = snapshot.docs.map(item => ({
       id: item.id,
       ...item.data()
     }));
 
-    orders.sort((a, b) =>
-      (b.createdAt?.toMillis?.() || 0) -
-      (a.createdAt?.toMillis?.() || 0)
+    ordersCache.sort((a, b) =>
+      timestampMillis(b.createdAt) - timestampMillis(a.createdAt)
     );
 
-    if (!orders.length) {
-      list.textContent = "No customer orders yet.";
+    updateOrderStatistics();
+
+    if (!ordersCache.length) {
+      list.innerHTML = '<p class="empty-state">No customer orders yet.</p>';
       return;
     }
 
-    const statuses = [
-      "pending", "confirmed", "processing",
-      "shipped", "delivered", "cancelled"
-    ];
-
-    const paymentStatuses = ["unpaid", "unverified", "paid"];
-
-    list.innerHTML = orders.map(order => {
-      const status = statuses.includes(order.status)
+    list.innerHTML = ordersCache.map(order => {
+      const status = ORDER_STATUSES.includes(order.status)
         ? order.status
         : "pending";
 
-      const paymentStatus = paymentStatuses.includes(order.paymentStatus)
+      const paymentStatus = PAYMENT_STATUSES.includes(order.paymentStatus)
         ? order.paymentStatus
         : "unpaid";
 
-      const subtotal = Number(order.total);
-      const fee = Number(order.deliveryFee ?? 0);
-      const grandTotal =
-        Number.isFinite(subtotal) && Number.isFinite(fee)
-          ? subtotal + fee
-          : null;
-
       return `
-        <article class="admin-card">
-          <p><strong>Order ID:</strong><br>${safe(order.id)}</p>
-          <p><strong>Customer:</strong> ${safe(order.customerName || "-")}</p>
-          <p><strong>Phone:</strong> ${safe(order.phone || "-")}</p>
-          <p><strong>Address:</strong> ${safe(order.address || "-")}</p>
-          <p><strong>Created:</strong> ${safe(formatDate(order.createdAt))}</p>
-          <p><strong>Confirmed:</strong> ${safe(formatDate(order.confirmedAt))}</p>
+        <article class="order-card">
+          <div class="order-card-head">
+            <div>
+              <h3>Order #${safe(order.id)}</h3>
+              <p>Created: ${safe(formatDate(order.createdAt))}</p>
+            </div>
 
-          <strong>Order Items</strong>
-          ${renderOrderItems(order.items)}
-
-          <div class="order-summary">
-            <p><span>Subtotal</span><strong>${safe(money(order.total))}</strong></p>
-            <p><span>Delivery Fee</span><strong>${safe(money(order.deliveryFee ?? 0))}</strong></p>
-            <p><span>Grand Total</span>
-              <strong>${grandTotal === null ? "—" : safe(money(grandTotal))}</strong>
-            </p>
+            <span class="status-pill ${safe(statusClass(status))}">
+              ${safe(status)}
+            </span>
           </div>
 
-          <div class="payment-box">
-            <h4>Payment Verification</h4>
-            <p><strong>Method:</strong> ${safe(paymentMethodLabel(order.paymentMethod))}</p>
-            <p><strong>Status:</strong> ${safe(paymentStatusLabel(paymentStatus))}</p>
-            <p><strong>Sender Number:</strong> ${safe(order.senderPhone || "Not provided")}</p>
-            <p><strong>Transaction ID:</strong> ${safe(order.transactionId || "Not provided")}</p>
-            <p><strong>Deadline:</strong> ${safe(formatDate(order.paymentDeadline))}</p>
+          <div class="order-details-grid">
+            <div>
+              <span class="detail-label">Customer</span>
+              <span class="detail-value">${safe(order.customerName || "-")}</span>
+            </div>
 
-            <label for="payment-${safe(order.id)}">Payment Status</label>
-            <select id="payment-${safe(order.id)}">
-              ${paymentStatuses.map(value => `
-                <option value="${value}" ${value === paymentStatus ? "selected" : ""}>
-                  ${safe(paymentStatusLabel(value))}
-                </option>
-              `).join("")}
+            <div>
+              <span class="detail-label">Phone</span>
+              <span class="detail-value">${safe(order.phone || "-")}</span>
+            </div>
+
+            <div>
+              <span class="detail-label">Address</span>
+              <span class="detail-value">${safe(order.address || "-")}</span>
+            </div>
+
+            <div>
+              <span class="detail-label">Confirmed</span>
+              <span class="detail-value">${safe(formatDate(order.confirmedAt))}</span>
+            </div>
+          </div>
+
+          <div class="order-box">
+            <h4>Order Items</h4>
+            ${renderOrderItems(order.items)}
+          </div>
+
+          <div class="order-box">
+            <h4>Order Summary</h4>
+
+            <div class="summary-line">
+              <span>Subtotal</span>
+              <strong>${safe(money(order.total))}</strong>
+            </div>
+
+            <div class="summary-line">
+              <span>Delivery Fee</span>
+              <strong>${safe(money(order.deliveryFee ?? 0))}</strong>
+            </div>
+
+            <div class="summary-line total">
+              <span>Grand Total</span>
+              <strong>${safe(money(getGrandTotal(order)))}</strong>
+            </div>
+          </div>
+
+          <div class="order-box">
+            <h4>Payment Verification</h4>
+
+            <p>
+              <span class="detail-label">Payment method</span>
+              <span class="detail-value">${safe(paymentMethodLabel(order.paymentMethod))}</span>
+            </p>
+
+            <p>
+              <span class="detail-label">Payment status</span>
+              <span class="status-pill ${safe(statusClass(paymentStatus))}">
+                ${safe(paymentStatusLabel(paymentStatus))}
+              </span>
+            </p>
+
+            <p>
+              <span class="detail-label">Sender number</span>
+              <span class="detail-value">${safe(order.senderPhone || "Not provided")}</span>
+            </p>
+
+            <p>
+              <span class="detail-label">Transaction ID</span>
+              <span class="detail-value">${safe(order.transactionId || "Not provided")}</span>
+            </p>
+
+            <p>
+              <span class="detail-label">Payment deadline</span>
+              <span class="detail-value">${safe(formatDate(order.paymentDeadline))}</span>
+            </p>
+
+            <label class="form-label" for="payment-${safe(order.id)}">
+              Payment Status
+            </label>
+
+            <select class="dashboard-field" id="payment-${safe(order.id)}">
+              ${statusOptions(PAYMENT_STATUSES, paymentStatus, {
+                unpaid: "Unpaid",
+                unverified: "Awaiting verification",
+                paid: "Paid"
+              })}
             </select>
 
             <p class="help-text">
-              Verify the transaction in the receiving account before selecting Paid.
+              Verify the transaction in the receiving account before marking Paid.
             </p>
           </div>
 
-          <label for="fee-${safe(order.id)}">Delivery Fee (৳)</label>
-          <input id="fee-${safe(order.id)}" type="number" min="0" step="1"
-            value="${safe(order.deliveryFee ?? 0)}">
+          <div class="form-grid">
+            <div>
+              <label class="form-label" for="fee-${safe(order.id)}">
+                Delivery Fee (৳)
+              </label>
 
-          <label for="courier-${safe(order.id)}">Courier Name</label>
-          <input id="courier-${safe(order.id)}" maxlength="100"
-            value="${safe(order.courierName || "")}">
+              <input class="dashboard-field"
+                id="fee-${safe(order.id)}"
+                type="number" min="0" step="1"
+                value="${safe(order.deliveryFee ?? 0)}">
+            </div>
 
-          <label for="tracking-${safe(order.id)}">Tracking Number</label>
-          <input id="tracking-${safe(order.id)}" maxlength="100"
-            value="${safe(order.trackingNumber || "")}">
+            <div>
+              <label class="form-label" for="courier-${safe(order.id)}">
+                Courier Name
+              </label>
 
-          <label for="status-${safe(order.id)}">Order Status</label>
-          <select id="status-${safe(order.id)}">
-            ${statuses.map(value => `
-              <option value="${value}" ${value === status ? "selected" : ""}>
-                ${value.charAt(0).toUpperCase() + value.slice(1)}
-              </option>
-            `).join("")}
-          </select>
+              <input class="dashboard-field"
+                id="courier-${safe(order.id)}"
+                maxlength="100"
+                value="${safe(order.courierName || "")}">
+            </div>
 
-          <p class="status-note">
-            Review the order and set delivery fee before selecting Confirmed.
+            <div>
+              <label class="form-label" for="tracking-${safe(order.id)}">
+                Tracking Number
+              </label>
+
+              <input class="dashboard-field"
+                id="tracking-${safe(order.id)}"
+                maxlength="100"
+                value="${safe(order.trackingNumber || "")}">
+            </div>
+
+            <div>
+              <label class="form-label" for="status-${safe(order.id)}">
+                Order Status
+              </label>
+
+              <select class="dashboard-field" id="status-${safe(order.id)}">
+                ${statusOptions(ORDER_STATUSES, status)}
+              </select>
+            </div>
+          </div>
+
+          <p class="help-text">
+            Set the delivery fee before confirming an order.
+            Online payment deadlines are created when an eligible order
+            is confirmed for the first time.
           </p>
 
-          <button type="button" class="save-order"
-            data-save-order="${safe(order.id)}">
+          <button class="primary-button"
+            type="button"
+            data-save-order="${safe(order.id)}"
+            style="width:100%;margin-top:12px">
             Save Order & Payment Status
           </button>
         </article>
@@ -926,7 +1450,12 @@ async function loadOrders() {
     }).join("");
   } catch (error) {
     console.error("Load orders error:", error);
-    list.textContent = "Could not load orders: " + error.message;
+
+    list.innerHTML = `
+      <p class="empty-state">
+        Could not load orders: ${safe(error.message)}
+      </p>
+    `;
   } finally {
     loadingOrders = false;
   }
@@ -935,15 +1464,16 @@ async function loadOrders() {
 onAuthStateChanged(auth, user => {
   if (user && user.uid === ADMIN_UID) {
     showDashboard();
-  } else {
-    if (dashboard) dashboard.dataset.ready = "";
-    showLogin();
+    return;
+  }
 
-    if (user) {
-      signOut(auth).catch(error => {
-        console.error("Could not sign out unauthorized user:", error);
-      });
-    }
+  dashboard.dataset.ready = "";
+  showLogin();
+
+  if (user) {
+    signOut(auth).catch(error => {
+      console.error("Could not sign out unauthorized user:", error);
+    });
   }
 });
 
@@ -954,7 +1484,7 @@ loginForm.addEventListener("submit", async event => {
 
   loginButton.disabled = true;
   loginButton.textContent = "Signing in...";
-  message.textContent = "Signing in...";
+  loginMessage.textContent = "Signing in...";
 
   try {
     const result = await signInWithEmailAndPassword(
@@ -968,7 +1498,7 @@ loginForm.addEventListener("submit", async event => {
       throw new Error("This account is not authorized as admin.");
     }
 
-    message.textContent = "Login successful.";
+    loginMessage.textContent = "Login successful.";
     showDashboard();
   } catch (error) {
     console.error("Admin login error:", error);
@@ -982,7 +1512,7 @@ loginForm.addEventListener("submit", async event => {
       "auth/network-request-failed": "Network error. Check your internet connection."
     };
 
-    message.textContent =
+    loginMessage.textContent =
       "Login failed: " +
       (friendlyMessages[error.code] || error.message);
   } finally {

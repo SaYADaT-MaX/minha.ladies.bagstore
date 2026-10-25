@@ -20,6 +20,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js";
 
 const ADMIN_UID = "utwqpe1ozLNCFKivDm6LKQonNM62";
+const PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 
 const loginForm = document.getElementById("loginForm");
 const emailInput = document.getElementById("email");
@@ -31,6 +32,7 @@ const message = document.getElementById("message");
 let editingId = null;
 let productsCache = [];
 let savingSettings = false;
+let savingProduct = false;
 let loadingOrders = false;
 let loadingProducts = false;
 
@@ -48,18 +50,18 @@ function money(value) {
   const amount = Number(value);
 
   return Number.isFinite(amount)
-    ? "৳" + amount.toLocaleString("en-BD")
+    ? "৳" + amount.toLocaleString("en-BD", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      })
     : "—";
 }
 
 function showMessage(text) {
   const box = document.getElementById("panelMessage");
 
-  if (box) {
-    box.textContent = text;
-  } else if (message) {
-    message.textContent = text;
-  }
+  if (box) box.textContent = text;
+  else if (message) message.textContent = text;
 }
 
 function isAdmin() {
@@ -77,8 +79,27 @@ function requireAdmin() {
 }
 
 function showLogin() {
-  loginForm.classList.remove("hidden");
-  dashboard.classList.add("hidden");
+  if (loginForm) loginForm.classList.remove("hidden");
+  if (dashboard) dashboard.classList.add("hidden");
+}
+
+function formatDate(value) {
+  if (!value) return "Not set";
+
+  let date;
+
+  if (typeof value.toDate === "function") {
+    date = value.toDate();
+  } else {
+    date = new Date(value);
+  }
+
+  if (Number.isNaN(date.getTime())) return "Not set";
+
+  return date.toLocaleString("en-BD", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
 }
 
 function getOrderItems(items) {
@@ -104,11 +125,7 @@ function renderOrderItems(items) {
     <div class="order-items-list">
       ${normalized.map((item, index) => {
         if (!item || typeof item !== "object") {
-          return `
-            <div class="order-item">
-              ${safe(item ?? "Product")}
-            </div>
-          `;
+          return `<div class="order-item">${safe(item ?? "Product")}</div>`;
         }
 
         const name =
@@ -121,15 +138,9 @@ function renderOrderItems(items) {
         const quantity = Number(item.quantity ?? item.qty ?? 1);
         const price = Number(item.price ?? item.unitPrice);
         const explicitTotal = item.subtotal ?? item.lineTotal;
-
-        const calculatedTotal =
-          Number.isFinite(price) && Number.isFinite(quantity)
-            ? price * quantity
-            : null;
-
         const lineTotal = explicitTotal != null
           ? Number(explicitTotal)
-          : calculatedTotal;
+          : price * quantity;
 
         return `
           <div class="order-item">
@@ -137,11 +148,9 @@ function renderOrderItems(items) {
             <p>Item #${index + 1}</p>
             <p>Quantity: ${safe(quantity)}</p>
             <p>Unit price: ${safe(money(price))}</p>
-            ${
-              Number.isFinite(lineTotal)
-                ? `<p>Item total: <strong>${safe(money(lineTotal))}</strong></p>`
-                : ""
-            }
+            ${Number.isFinite(lineTotal)
+              ? `<p>Item total: <strong>${safe(money(lineTotal))}</strong></p>`
+              : ""}
           </div>
         `;
       }).join("")}
@@ -149,25 +158,24 @@ function renderOrderItems(items) {
   `;
 }
 
-function formatDate(value) {
-  if (!value) return "Not set";
+function paymentMethodLabel(method) {
+  return ({
+    pending: "Not chosen yet",
+    cod: "Cash on Delivery",
+    bkash: "bKash",
+    nagad: "Nagad",
+    rocket: "Rocket"
+  })[method] || method || "Not specified";
+}
 
-  let date;
-
-  if (typeof value.toDate === "function") {
-    date = value.toDate();
-  } else if (value instanceof Date) {
-    date = value;
-  } else {
-    date = new Date(value);
-  }
-
-  if (Number.isNaN(date.getTime())) return "Not set";
-
-  return date.toLocaleString("en-BD", {
-    dateStyle: "medium",
-    timeStyle: "short"
-  });
+function paymentStatusLabel(status) {
+  return ({
+    unpaid: "Unpaid",
+    unverified: "Awaiting verification",
+    paid: "Paid",
+    failed: "Failed",
+    refunded: "Refunded"
+  })[status] || status || "Unpaid";
 }
 
 function showDashboard() {
@@ -179,23 +187,26 @@ function showDashboard() {
   loginForm.classList.add("hidden");
   dashboard.classList.remove("hidden");
 
-  if (dashboard.dataset.ready === "yes") return;
+  if (dashboard.dataset.ready === "yes") {
+    loadPaymentSettings();
+    loadProducts();
+    loadOrders();
+    return;
+  }
 
   dashboard.dataset.ready = "yes";
 
   dashboard.innerHTML = `
     <style>
+      #dashboard, #dashboard * {
+        box-sizing: border-box;
+      }
+
       #dashboard {
         width: 100%;
         max-width: 100%;
         min-width: 0;
         overflow-wrap: anywhere;
-      }
-
-      #dashboard *,
-      #dashboard *::before,
-      #dashboard *::after {
-        box-sizing: border-box;
       }
 
       #dashboard input,
@@ -209,6 +220,7 @@ function showDashboard() {
         border-radius: 8px;
         font: inherit;
         background: #fff;
+        color: #302821;
       }
 
       #dashboard input[type="checkbox"] {
@@ -230,7 +242,7 @@ function showDashboard() {
       }
 
       #dashboard button:disabled {
-        opacity: 0.65;
+        opacity: .65;
         cursor: wait;
       }
 
@@ -240,11 +252,6 @@ function showDashboard() {
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-      }
-
-      #dashboard .admin-top button {
-        width: auto;
-        margin: 0;
       }
 
       #dashboard .admin-section {
@@ -257,16 +264,10 @@ function showDashboard() {
         min-width: 0;
         padding: 14px;
         margin: 14px 0;
-        border: 1px solid #eadde3;
+        border: 1px solid #eadfd3;
         border-radius: 12px;
         background: #fff;
         overflow-wrap: anywhere;
-      }
-
-      #dashboard .admin-card p {
-        line-height: 1.55;
-        overflow-wrap: anywhere;
-        word-break: break-word;
       }
 
       #dashboard .order-items-list {
@@ -276,20 +277,15 @@ function showDashboard() {
         margin-top: 10px;
       }
 
-      #dashboard .order-item {
-        min-width: 0;
-        padding: 12px;
-        border: 1px solid #eadde3;
-        border-radius: 9px;
-        background: #fcf8fa;
-        overflow-wrap: anywhere;
-      }
-
+      #dashboard .order-item,
+      #dashboard .payment-box,
       #dashboard .order-summary {
-        padding: 11px;
+        padding: 12px;
         margin: 12px 0;
-        background: #f8f1f4;
+        background: #faf7f2;
+        border: 1px solid #eadfd3;
         border-radius: 9px;
+        overflow-wrap: anywhere;
       }
 
       #dashboard .order-summary p {
@@ -302,23 +298,9 @@ function showDashboard() {
       #dashboard .save-order {
         width: 100%;
         margin-top: 14px;
-        background: #8b315c;
+        background: #814438;
         color: #fff;
         font-weight: 700;
-      }
-
-      #dashboard .admin-divider {
-        margin: 22px 0;
-        border: 0;
-        border-top: 1px solid #eadde3;
-      }
-
-      #dashboard .payment-box {
-        padding: 12px;
-        margin: 12px 0;
-        background: #fcf8fa;
-        border: 1px solid #eadde3;
-        border-radius: 9px;
       }
 
       #dashboard .help-text {
@@ -330,19 +312,19 @@ function showDashboard() {
       #dashboard .status-note {
         padding: 10px;
         border-radius: 8px;
-        background: #f8f1f4;
+        background: #faf7f2;
         line-height: 1.6;
+      }
+
+      #dashboard .admin-divider {
+        margin: 22px 0;
+        border: 0;
+        border-top: 1px solid #eadfd3;
       }
 
       @media (min-width: 600px) {
         #dashboard .order-items-list {
           grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-      }
-
-      @media (max-width: 380px) {
-        #dashboard .admin-card {
-          padding: 10px;
         }
       }
     </style>
@@ -358,24 +340,17 @@ function showDashboard() {
 
     <section class="admin-section">
       <h3>Payment Settings</h3>
-
-      <p class="help-text">
-        Enter the seller's official receiving numbers.
-        Customers can use these details after their orders are confirmed.
-      </p>
+      <p class="help-text">Enter the seller's official receiving numbers.</p>
 
       <form id="paymentSettingsForm">
         <label for="bkashNumber">bKash Number</label>
-        <input id="bkashNumber" type="tel" maxlength="25"
-          autocomplete="off" placeholder="Enter bKash number">
+        <input id="bkashNumber" type="tel" maxlength="25">
 
         <label for="nagadNumber">Nagad Number</label>
-        <input id="nagadNumber" type="tel" maxlength="25"
-          autocomplete="off" placeholder="Enter Nagad number">
+        <input id="nagadNumber" type="tel" maxlength="25">
 
         <label for="rocketNumber">Rocket Number</label>
-        <input id="rocketNumber" type="tel" maxlength="25"
-          autocomplete="off" placeholder="Enter Rocket number">
+        <input id="rocketNumber" type="tel" maxlength="25">
 
         <button id="savePaymentSettings" type="submit">
           Save Payment Numbers
@@ -399,11 +374,10 @@ function showDashboard() {
         <input id="pStock" type="number" min="0" step="1" required>
 
         <label for="pImage">Image URL *</label>
-        <input id="pImage" type="url" required
-          placeholder="https://example.com/bag.jpg">
+        <input id="pImage" type="url" required>
 
         <label for="pCategory">Category</label>
-        <input id="pCategory" placeholder="Handbags">
+        <input id="pCategory">
 
         <label for="pDescription">Description</label>
         <textarea id="pDescription" rows="3"></textarea>
@@ -430,13 +404,11 @@ function showDashboard() {
 
     <section class="admin-section">
       <h3>Customer Orders & Payment Verification</h3>
-
       <p class="help-text">
-        Confirm orders after reviewing them and setting the delivery fee.
-        The online-payment deadline is 30 minutes from first confirmation.
-        Verify transactions in the receiving account before marking them Paid.
+        Review orders and set the delivery fee before confirmation.
+        The online payment deadline is 30 minutes from confirmation.
+        Verify transactions before marking them Paid.
       </p>
-
       <button id="refreshOrders" type="button">Refresh Orders</button>
       <div id="ordersList">Loading orders...</div>
     </section>
@@ -467,16 +439,13 @@ function showDashboard() {
 
   document.getElementById("productsList").addEventListener("click", async event => {
     const button = event.target.closest("button[data-action]");
-
     if (!button || !requireAdmin()) return;
 
-    const id = button.dataset.id;
-    const product = productsCache.find(item => item.id === id);
-
+    const product = productsCache.find(item => item.id === button.dataset.id);
     if (!product) return;
 
     if (button.dataset.action === "edit") {
-      editingId = id;
+      editingId = product.id;
 
       document.getElementById("formHeading").textContent = "Edit Product";
       document.getElementById("pName").value = product.name || "";
@@ -493,18 +462,15 @@ function showDashboard() {
     }
 
     if (button.dataset.action === "delete") {
-      if (!confirm(`Delete "${product.name}"? This cannot be undone.`)) {
-        return;
-      }
+      if (!confirm(`Delete "${product.name}"? This cannot be undone.`)) return;
 
       button.disabled = true;
 
       try {
-        await deleteDoc(doc(db, "products", id));
+        await deleteDoc(doc(db, "products", product.id));
         showMessage("Product deleted successfully.");
         await loadProducts();
       } catch (error) {
-        console.error("Delete product error:", error);
         showMessage("Delete failed: " + error.message);
       } finally {
         button.disabled = false;
@@ -514,7 +480,6 @@ function showDashboard() {
 
   document.getElementById("ordersList").addEventListener("click", async event => {
     const button = event.target.closest("button[data-save-order]");
-
     if (!button || !requireAdmin()) return;
 
     const id = button.dataset.saveOrder;
@@ -522,11 +487,11 @@ function showDashboard() {
     const courierInput = document.getElementById("courier-" + id);
     const trackingInput = document.getElementById("tracking-" + id);
     const statusInput = document.getElementById("status-" + id);
-    const paymentStatusInput = document.getElementById("payment-" + id);
+    const paymentInput = document.getElementById("payment-" + id);
 
     if (!feeInput || !courierInput || !trackingInput ||
-        !statusInput || !paymentStatusInput) {
-      showMessage("Order fields not found. Refresh orders and try again.");
+        !statusInput || !paymentInput) {
+      showMessage("Order fields missing. Refresh orders and try again.");
       return;
     }
 
@@ -534,52 +499,48 @@ function showDashboard() {
     const courierName = courierInput.value.trim();
     const trackingNumber = trackingInput.value.trim();
     const status = statusInput.value;
-    const paymentStatus = paymentStatusInput.value;
+    const paymentStatus = paymentInput.value;
 
-    const allowedOrderStatuses = [
+    const validStatuses = [
       "pending", "confirmed", "processing",
       "shipped", "delivered", "cancelled"
     ];
 
-    const allowedPaymentStatuses = [
-      "unpaid", "unverified", "paid", "rejected"
-    ];
+    const validPaymentStatuses = ["unpaid", "unverified", "paid"];
 
     if (!Number.isFinite(deliveryFee) || deliveryFee < 0) {
       showMessage("Delivery fee must be zero or a positive number.");
       return;
     }
 
-    if (!allowedOrderStatuses.includes(status) ||
-        !allowedPaymentStatuses.includes(paymentStatus)) {
+    if (!validStatuses.includes(status) ||
+        !validPaymentStatuses.includes(paymentStatus)) {
       showMessage("Invalid order or payment status.");
       return;
     }
 
-    if (paymentStatus === "paid" &&
-        !confirm("Have you verified the payment in the receiving account?")) {
-      return;
-    }
+    if (
+      paymentStatus === "paid" &&
+      !confirm("Have you verified the payment in the receiving account?")
+    ) return;
 
     button.disabled = true;
     button.textContent = "Saving Order...";
 
     try {
       const orderRef = doc(db, "orders", id);
-      const latestSnapshot = await getDoc(orderRef);
+      const snapshot = await getDoc(orderRef);
 
-      if (!latestSnapshot.exists()) {
+      if (!snapshot.exists()) {
         throw new Error("This order no longer exists.");
       }
 
-      const latestOrder = latestSnapshot.data();
-      const subtotal = Number(latestOrder.total);
+      const order = snapshot.data();
+      const subtotal = Number(order.total);
 
       if (!Number.isFinite(subtotal) || subtotal < 0) {
         throw new Error("The order subtotal is invalid.");
       }
-
-      const previousStatus = latestOrder.status || "pending";
 
       const changes = {
         deliveryFee,
@@ -591,37 +552,40 @@ function showDashboard() {
         updatedAt: serverTimestamp()
       };
 
-      if (
-        previousStatus !== "confirmed" &&
-        status === "confirmed" &&
-        !latestOrder.confirmedAt
-      ) {
+      // Keep the original confirmation time and deadline.
+      if (status === "confirmed" && !order.confirmedAt) {
         changes.confirmedAt = serverTimestamp();
+      }
 
-        if (latestOrder.paymentMethod !== "cod") {
-          changes.paymentRequestedAt = serverTimestamp();
-          changes.paymentDeadline = Timestamp.fromDate(
-            new Date(Date.now() + 30 * 60 * 1000)
-          );
-        }
+      // Start the 30-minute window only once for online payment.
+      if (
+        status === "confirmed" &&
+        order.paymentMethod !== "cod" &&
+        !order.paymentDeadline
+      ) {
+        changes.paymentRequestedAt = serverTimestamp();
+        changes.paymentDeadline = Timestamp.fromDate(
+          new Date(Date.now() + PAYMENT_WINDOW_MS)
+        );
       }
 
       if (paymentStatus === "paid") {
         changes.paidAt = serverTimestamp();
       }
 
-      if (status === "cancelled") {
+      if (status === "cancelled" && order.status !== "cancelled") {
         changes.cancelledAt = serverTimestamp();
+      }
+
+      if (order.paymentStatus === "paid" && paymentStatus !== "paid") {
+        if (!confirm("This order is already marked Paid. Are you sure you want to change it?")) {
+          return;
+        }
       }
 
       await updateDoc(orderRef, changes);
 
-      showMessage(
-        status === "confirmed"
-          ? "Order confirmed. Delivery fee and total saved."
-          : "Order and payment details saved successfully."
-      );
-
+      showMessage("Order details saved successfully.");
       await loadOrders();
     } catch (error) {
       console.error("Order update error:", error);
@@ -655,10 +619,9 @@ async function loadPaymentSettings() {
     showMessage(
       snapshot.exists()
         ? "Payment settings loaded."
-        : "No payment numbers saved yet. Enter numbers and save."
+        : "Enter the payment numbers and save them."
     );
   } catch (error) {
-    console.error("Load payment settings error:", error);
     showMessage("Could not load payment settings: " + error.message);
   }
 }
@@ -672,29 +635,19 @@ async function savePaymentSettings(event) {
   const nagadNumber = document.getElementById("nagadNumber").value.trim();
   const rocketNumber = document.getElementById("rocketNumber").value.trim();
 
-  if (!bkashNumber && !nagadNumber && !rocketNumber) {
-    if (!confirm("All payment numbers are empty. Save empty settings?")) {
-      return;
-    }
-  }
-
-  const saveButton = document.getElementById("savePaymentSettings");
+  const button = document.getElementById("savePaymentSettings");
 
   savingSettings = true;
-  saveButton.disabled = true;
-  saveButton.textContent = "Saving Payment Numbers...";
+  button.disabled = true;
+  button.textContent = "Saving...";
 
   try {
-    await setDoc(
-      doc(db, "settings", "payment"),
-      {
-        bkashNumber,
-        nagadNumber,
-        rocketNumber,
-        updatedAt: serverTimestamp()
-      },
-      { merge: true }
-    );
+    await setDoc(doc(db, "settings", "payment"), {
+      bkashNumber,
+      nagadNumber,
+      rocketNumber,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
 
     const check = await getDoc(doc(db, "settings", "payment"));
 
@@ -704,33 +657,24 @@ async function savePaymentSettings(event) {
 
     const saved = check.data();
 
-    const matches =
-      (saved.bkashNumber || "") === bkashNumber &&
-      (saved.nagadNumber || "") === nagadNumber &&
-      (saved.rocketNumber || "") === rocketNumber;
-
-    if (!matches) {
-      throw new Error("The saved values do not match the entered numbers.");
+    if (
+      (saved.bkashNumber || "") !== bkashNumber ||
+      (saved.nagadNumber || "") !== nagadNumber ||
+      (saved.rocketNumber || "") !== rocketNumber
+    ) {
+      throw new Error("Saved values do not match the entered numbers.");
     }
 
-    showMessage("Payment numbers saved and verified successfully.");
-    alert("Success! Payment numbers saved to Firebase.");
+    showMessage("Payment numbers saved successfully.");
+    alert("Payment numbers saved successfully.");
   } catch (error) {
-    console.error("Payment settings save error:", error);
+    console.error("Payment settings error:", error);
     showMessage("Could not save payment numbers: " + error.message);
-    alert(
-      "Could not save payment numbers.\n\n" + error.message +
-      "\n\nIf this says Missing or insufficient permissions, check Firestore Rules."
-    );
+    alert("Could not save payment numbers:\n" + error.message);
   } finally {
     savingSettings = false;
-
-    const currentButton = document.getElementById("savePaymentSettings");
-
-    if (currentButton) {
-      currentButton.disabled = false;
-      currentButton.textContent = "Save Payment Numbers";
-    }
+    button.disabled = false;
+    button.textContent = "Save Payment Numbers";
   }
 }
 
@@ -747,7 +691,7 @@ function resetForm() {
 async function saveProduct(event) {
   event.preventDefault();
 
-  if (!requireAdmin()) return;
+  if (savingProduct || !requireAdmin()) return;
 
   const name = document.getElementById("pName").value.trim();
   const price = Number(document.getElementById("pPrice").value);
@@ -760,12 +704,12 @@ async function saveProduct(event) {
     !Number.isFinite(stock) ||
     price < 0 || stock < 0
   ) {
-    showMessage("Please check product name, image URL, price and stock.");
+    showMessage("Check product name, image URL, price and stock.");
     return;
   }
 
   if (!/^https?:\/\//i.test(imageUrl)) {
-    showMessage("Image URL must begin with https:// or http://");
+    showMessage("Image URL must start with https:// or http://");
     return;
   }
 
@@ -779,16 +723,17 @@ async function saveProduct(event) {
     active: document.getElementById("pActive").checked
   };
 
-  const saveButton = document.getElementById("saveProduct");
-  const isEditing = Boolean(editingId);
-  const currentEditingId = editingId;
+  const button = document.getElementById("saveProduct");
+  const wasEditing = Boolean(editingId);
+  const currentId = editingId;
 
-  saveButton.disabled = true;
-  saveButton.textContent = isEditing ? "Updating..." : "Saving...";
+  savingProduct = true;
+  button.disabled = true;
+  button.textContent = wasEditing ? "Updating..." : "Saving...";
 
   try {
-    if (isEditing) {
-      await updateDoc(doc(db, "products", currentEditingId), productData);
+    if (wasEditing) {
+      await updateDoc(doc(db, "products", currentId), productData);
       showMessage("Product updated successfully.");
     } else {
       await addDoc(collection(db, "products"), {
@@ -804,12 +749,12 @@ async function saveProduct(event) {
     resetForm();
     await loadProducts();
   } catch (error) {
-    console.error("Product save error:", error);
     showMessage("Product save failed: " + error.message);
     alert("Product save failed:\n" + error.message);
   } finally {
-    saveButton.disabled = false;
-    saveButton.textContent = "Save Product";
+    savingProduct = false;
+    button.disabled = false;
+    button.textContent = editingId ? "Update Product" : "Save Product";
   }
 }
 
@@ -837,10 +782,7 @@ async function loadProducts() {
     list.innerHTML = productsCache.map(product => `
       <article class="admin-card">
         <strong>${safe(product.name)}</strong>
-        <p>
-          Price: ${safe(money(product.price))} |
-          Stock: ${safe(product.stock)}
-        </p>
+        <p>Price: ${safe(money(product.price))} | Stock: ${safe(product.stock)}</p>
         <p>Category: ${safe(product.category || "-")}</p>
         <p>Status: ${product.active === true ? "Visible" : "Hidden"}</p>
 
@@ -875,32 +817,22 @@ async function loadOrders() {
       ...item.data()
     }));
 
-    if (!orders.length) {
-      list.textContent = "No customer orders yet.";
-      return;
-    }
-
     orders.sort((a, b) =>
       (b.createdAt?.toMillis?.() || 0) -
       (a.createdAt?.toMillis?.() || 0)
     );
+
+    if (!orders.length) {
+      list.textContent = "No customer orders yet.";
+      return;
+    }
 
     const statuses = [
       "pending", "confirmed", "processing",
       "shipped", "delivered", "cancelled"
     ];
 
-    const paymentStatuses = [
-      "unpaid", "unverified", "paid", "rejected"
-    ];
-
-    const paymentLabels = {
-      pending: "Not chosen yet",
-      cod: "Cash on Delivery",
-      bkash: "bKash",
-      nagad: "Nagad",
-      rocket: "Rocket"
-    };
+    const paymentStatuses = ["unpaid", "unverified", "paid"];
 
     list.innerHTML = orders.map(order => {
       const status = statuses.includes(order.status)
@@ -912,15 +844,11 @@ async function loadOrders() {
         : "unpaid";
 
       const subtotal = Number(order.total);
-      const deliveryFee = Number(order.deliveryFee ?? 0);
-
+      const fee = Number(order.deliveryFee ?? 0);
       const grandTotal =
-        Number.isFinite(subtotal) && Number.isFinite(deliveryFee)
-          ? subtotal + deliveryFee
+        Number.isFinite(subtotal) && Number.isFinite(fee)
+          ? subtotal + fee
           : null;
-
-      const method = paymentLabels[order.paymentMethod] ||
-        order.paymentMethod || "Not specified";
 
       return `
         <article class="admin-card">
@@ -931,37 +859,30 @@ async function loadOrders() {
           <p><strong>Created:</strong> ${safe(formatDate(order.createdAt))}</p>
           <p><strong>Confirmed:</strong> ${safe(formatDate(order.confirmedAt))}</p>
 
-          <div>
-            <strong>Order Items</strong>
-            ${renderOrderItems(order.items)}
-          </div>
+          <strong>Order Items</strong>
+          ${renderOrderItems(order.items)}
 
           <div class="order-summary">
             <p><span>Subtotal</span><strong>${safe(money(order.total))}</strong></p>
             <p><span>Delivery Fee</span><strong>${safe(money(order.deliveryFee ?? 0))}</strong></p>
-            <p>
-              <span>Grand Total</span>
-              <strong>${grandTotal !== null ? safe(money(grandTotal)) : "—"}</strong>
+            <p><span>Grand Total</span>
+              <strong>${grandTotal === null ? "—" : safe(money(grandTotal))}</strong>
             </p>
           </div>
 
           <div class="payment-box">
             <h4>Payment Verification</h4>
-            <p><strong>Method:</strong> ${safe(method)}</p>
-            <p><strong>Payment Status:</strong> ${safe(paymentStatus)}</p>
+            <p><strong>Method:</strong> ${safe(paymentMethodLabel(order.paymentMethod))}</p>
+            <p><strong>Status:</strong> ${safe(paymentStatusLabel(paymentStatus))}</p>
             <p><strong>Sender Number:</strong> ${safe(order.senderPhone || "Not provided")}</p>
             <p><strong>Transaction ID:</strong> ${safe(order.transactionId || "Not provided")}</p>
-            <p><strong>Payment Deadline:</strong> ${safe(formatDate(order.paymentDeadline))}</p>
+            <p><strong>Deadline:</strong> ${safe(formatDate(order.paymentDeadline))}</p>
 
             <label for="payment-${safe(order.id)}">Payment Status</label>
             <select id="payment-${safe(order.id)}">
               ${paymentStatuses.map(value => `
                 <option value="${value}" ${value === paymentStatus ? "selected" : ""}>
-                  ${
-                    value === "unverified"
-                      ? "Awaiting Verification"
-                      : value.charAt(0).toUpperCase() + value.slice(1)
-                  }
+                  ${safe(paymentStatusLabel(value))}
                 </option>
               `).join("")}
             </select>
@@ -977,13 +898,11 @@ async function loadOrders() {
 
           <label for="courier-${safe(order.id)}">Courier Name</label>
           <input id="courier-${safe(order.id)}" maxlength="100"
-            value="${safe(order.courierName || "")}"
-            placeholder="e.g. Pathao Courier">
+            value="${safe(order.courierName || "")}">
 
           <label for="tracking-${safe(order.id)}">Tracking Number</label>
           <input id="tracking-${safe(order.id)}" maxlength="100"
-            value="${safe(order.trackingNumber || "")}"
-            placeholder="Tracking number (optional)">
+            value="${safe(order.trackingNumber || "")}">
 
           <label for="status-${safe(order.id)}">Order Status</label>
           <select id="status-${safe(order.id)}">
@@ -995,7 +914,7 @@ async function loadOrders() {
           </select>
 
           <p class="status-note">
-            Choose Confirmed after reviewing the order and setting the delivery fee.
+            Review the order and set delivery fee before selecting Confirmed.
           </p>
 
           <button type="button" class="save-order"
@@ -1017,7 +936,7 @@ onAuthStateChanged(auth, user => {
   if (user && user.uid === ADMIN_UID) {
     showDashboard();
   } else {
-    dashboard.dataset.ready = "";
+    if (dashboard) dashboard.dataset.ready = "";
     showLogin();
 
     if (user) {
